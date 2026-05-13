@@ -5,7 +5,10 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell
 } from 'recharts';
-import { DollarSign, TrendingUp, Percent, Megaphone, Clock, Download, CheckCircle2, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { DollarSign, TrendingUp, Percent, Megaphone, Clock, Download, CheckCircle2, XCircle, ArrowDownToLine, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
 
 const generateFlowData = () =>
@@ -68,6 +71,32 @@ export default function AdminWallet() {
   const [flowData] = useState(generateFlowData);
   const [txFilter, setTxFilter] = useState('all');
   const [withdrawals, setWithdrawals] = useState(WITHDRAWAL_REQUESTS);
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawForm, setWithdrawForm] = useState({ amount: '', bank: '', account: '', note: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleWithdraw = async () => {
+    if (!withdrawForm.amount || !withdrawForm.bank || !withdrawForm.account) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    setSubmitting(true);
+    await new Promise(r => setTimeout(r, 800));
+    const newRequest = {
+      id: withdrawals.length + 1,
+      requester: 'Platform Earnings',
+      amount: Number(withdrawForm.amount),
+      requested: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'pending',
+      bank: `${withdrawForm.bank} •••• ${withdrawForm.account.slice(-4)}`,
+      note: withdrawForm.note,
+    };
+    setWithdrawals(prev => [newRequest, ...prev]);
+    setSubmitting(false);
+    setShowWithdrawModal(false);
+    setWithdrawForm({ amount: '', bank: '', account: '', note: '' });
+    toast.success('Withdrawal request submitted successfully!');
+  };
 
   const filtered = RECENT_REVENUE.filter(tx =>
     txFilter === 'all' || tx.type === txFilter
@@ -75,6 +104,86 @@ export default function AdminWallet() {
 
   return (
     <div className="space-y-6">
+
+      {/* Withdraw Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#0d1220] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-white/8">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center">
+                  <ArrowDownToLine className="w-4 h-4 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-white font-bold text-sm">Withdraw Funds</h3>
+                  <p className="text-white/40 text-xs">Submit a payout request</p>
+                </div>
+              </div>
+              <button onClick={() => setShowWithdrawModal(false)} className="text-white/40 hover:text-white p-1">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-white/60 text-xs mb-1.5 block">Amount (₦) <span className="text-red-400">*</span></label>
+                <Input
+                  type="number"
+                  placeholder="e.g. 50000"
+                  value={withdrawForm.amount}
+                  onChange={e => setWithdrawForm(p => ({ ...p, amount: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20"
+                />
+              </div>
+              <div>
+                <label className="text-white/60 text-xs mb-1.5 block">Bank Name <span className="text-red-400">*</span></label>
+                <select
+                  value={withdrawForm.bank}
+                  onChange={e => setWithdrawForm(p => ({ ...p, bank: e.target.value }))}
+                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-md px-3 py-2"
+                >
+                  <option value="" className="bg-[#0d1220]">Select bank...</option>
+                  {['GTBank','Zenith Bank','Access Bank','First Bank','UBA','Fidelity Bank','FCMB','Stanbic IBTC','Polaris Bank','Keystone Bank'].map(b => (
+                    <option key={b} value={b} className="bg-[#0d1220]">{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-white/60 text-xs mb-1.5 block">Account Number <span className="text-red-400">*</span></label>
+                <Input
+                  type="text"
+                  placeholder="10-digit account number"
+                  maxLength={10}
+                  value={withdrawForm.account}
+                  onChange={e => setWithdrawForm(p => ({ ...p, account: e.target.value.replace(/\D/g, '') }))}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-white/60 text-xs mb-1.5 block">Note (optional)</label>
+                <Input
+                  placeholder="Reason for withdrawal..."
+                  value={withdrawForm.note}
+                  onChange={e => setWithdrawForm(p => ({ ...p, note: e.target.value }))}
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20"
+                />
+              </div>
+              <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3">
+                <p className="text-amber-400/80 text-xs">⚠️ Withdrawal requests are processed manually. Funds will be transferred within 1–3 business days.</p>
+              </div>
+            </div>
+            <div className="flex gap-3 p-5 pt-0">
+              <Button variant="outline" onClick={() => setShowWithdrawModal(false)} className="flex-1 border-white/15 text-white/60 hover:bg-white/5">
+                Cancel
+              </Button>
+              <Button onClick={handleWithdraw} disabled={submitting} className="flex-1 bg-red-600 hover:bg-red-700 border-0 gap-2">
+                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownToLine className="w-4 h-4" />}
+                {submitting ? 'Submitting...' : 'Submit Request'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Platform Balance" value="₦186,000" sub="Available" icon={DollarSign} trend="+₦8,420 today" trendUp color="blue" />
@@ -142,6 +251,9 @@ export default function AdminWallet() {
       <div className="rounded-2xl border border-white/8 bg-[#0d1220] overflow-hidden">
         <div className="flex items-center justify-between p-5 border-b border-white/8">
           <h3 className="text-white font-bold text-sm flex items-center gap-2"><Clock className="w-4 h-4 text-amber-400" />Withdrawal Requests</h3>
+          <Button onClick={() => setShowWithdrawModal(true)} size="sm" className="bg-red-600/20 hover:bg-red-600/40 text-red-300 border border-red-500/30 gap-1.5 text-xs">
+            <ArrowDownToLine className="w-3.5 h-3.5" /> Withdraw Funds
+          </Button>
         </div>
         <div className="p-5 space-y-3">
           {withdrawals.map(w => (
