@@ -1,0 +1,65 @@
+{
+  "name": "Advertiser",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "company_logo": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "industry": {
+      "type": "string",
+      "enum": [
+        "education",
+        "technology",
+        "finance",
+        "healthcare",
+        "retail",
+        "media",
+        "other"
+      ],
+      "default": "other"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "suspended"
+      ],
+      "default": "pending"
+    },
+    "total_spent": {
+      "type": "number",
+      "default": 0
+    },
+    "total_campaigns": {
+      "type": "number",
+      "default": 0
+    },
+    "balance": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "company_name",
+    "contact_email"
+  ]
+}

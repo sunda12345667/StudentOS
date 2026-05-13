@@ -1,0 +1,38 @@
+{
+  "name": "CommissionConfig",
+  "type": "object",
+  "properties": {
+    "rate": {
+      "type": "number",
+      "default": 10
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "min_order_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "category_overrides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "rate": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "updated_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "rate"
+  ]
+}

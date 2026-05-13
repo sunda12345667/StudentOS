@@ -29,8 +29,18 @@ import Reels from '@/pages/Reels';
 import CampusGroups from '@/pages/CampusGroups';
 import CampusGroupDetail from '@/pages/CampusGroupDetail';
 
+import AdminLayout from '@/components/admin/AdminLayout';
+import AdminOverview from '@/pages/admin/AdminOverview';
+import AdminCommission from '@/pages/admin/AdminCommission';
+import AdminAds from '@/pages/admin/AdminAds';
+import AdminAdvertisers from '@/pages/admin/AdminAdvertisers';
+import AdminWallet from '@/pages/admin/AdminWallet';
+import AdminAnalytics from '@/pages/admin/AdminAnalytics';
+import AdminNotifications from '@/pages/admin/AdminNotifications';
+import AdminSettings from '@/pages/admin/AdminSettings';
+
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -76,6 +86,20 @@ const AuthenticatedApp = () => {
           <Route path="/reels" element={<Reels />} />
           <Route path="/campus" element={<CampusGroups />} />
           <Route path="/campus/:id" element={<CampusGroupDetail />} />
+        </Route>
+      </Route>
+
+      {/* Admin routes — admin only */}
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+        <Route element={<AdminLayout user={user} />}>
+          <Route path="/admin" element={<AdminOverview />} />
+          <Route path="/admin/commission" element={<AdminCommission />} />
+          <Route path="/admin/ads" element={<AdminAds />} />
+          <Route path="/admin/advertisers" element={<AdminAdvertisers />} />
+          <Route path="/admin/wallet" element={<AdminWallet />} />
+          <Route path="/admin/analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/notifications" element={<AdminNotifications />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
         </Route>
       </Route>
 

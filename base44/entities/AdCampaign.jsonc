@@ -1,0 +1,110 @@
+{
+  "name": "AdCampaign",
+  "type": "object",
+  "properties": {
+    "campaign_name": {
+      "type": "string"
+    },
+    "advertiser_id": {
+      "type": "string"
+    },
+    "advertiser_name": {
+      "type": "string"
+    },
+    "company_logo": {
+      "type": "string"
+    },
+    "ad_type": {
+      "type": "string",
+      "enum": [
+        "feed",
+        "sidebar",
+        "marketplace",
+        "sponsored_post",
+        "video"
+      ],
+      "default": "feed"
+    },
+    "placement": {
+      "type": "string",
+      "enum": [
+        "feed",
+        "sidebar",
+        "marketplace",
+        "reels",
+        "campus"
+      ],
+      "default": "feed"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "video_url": {
+      "type": "string"
+    },
+    "target_url": {
+      "type": "string"
+    },
+    "budget": {
+      "type": "number",
+      "default": 0
+    },
+    "spent": {
+      "type": "number",
+      "default": 0
+    },
+    "clicks": {
+      "type": "number",
+      "default": 0
+    },
+    "impressions": {
+      "type": "number",
+      "default": 0
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "paused",
+        "rejected",
+        "completed"
+      ],
+      "default": "pending"
+    },
+    "rejection_reason": {
+      "type": "string"
+    },
+    "daily_budget": {
+      "type": "number",
+      "default": 0
+    },
+    "cpc": {
+      "type": "number",
+      "default": 0
+    },
+    "cpm": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "campaign_name",
+    "advertiser_name",
+    "budget"
+  ]
+}

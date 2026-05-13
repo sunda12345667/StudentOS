@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, BookOpen, Users, ShoppingBag, Bot, Bell,
   MessageCircle, School, Trophy, ChevronLeft, ChevronRight,
-  GraduationCap, Sparkles, Settings, LogOut, Play
+  GraduationCap, Sparkles, Settings, LogOut, Play, ShieldCheck
 } from 'lucide-react';
 
 const NAV = [
@@ -91,6 +91,18 @@ export default function Sidebar({ user, collapsed, onToggle }) {
           );
         })}
       </nav>
+
+      {/* Admin link for admins */}
+      {user?.role === 'admin' && (
+        <div className="px-2 pb-1">
+          <Link to="/admin">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600/20 to-purple-600/10 border border-blue-500/20 hover:from-blue-600/30 transition-all">
+              <ShieldCheck className="w-4 h-4 text-blue-400 flex-shrink-0" />
+              {!collapsed && <span className="text-xs font-bold text-blue-300">Owner Dashboard</span>}
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* User + Collapse */}
       <div className="border-t border-border p-2 flex-shrink-0">
