@@ -25,6 +25,7 @@ import Messages from '@/pages/Messages';
 import Notifications from '@/pages/Notifications';
 import Profile from '@/pages/Profile';
 import Leaderboard from '@/pages/Leaderboard';
+import Reels from '@/pages/Reels';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -70,6 +71,7 @@ const AuthenticatedApp = () => {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile/:email" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/reels" element={<Reels />} />
         </Route>
       </Route>
 

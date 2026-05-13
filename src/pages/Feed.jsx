@@ -1,26 +1,51 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, TrendingUp, Sparkles, BookOpen, Trophy, Flame } from 'lucide-react';
+import { Loader2, BookOpen, Trophy, Sparkles, Play, X } from 'lucide-react';
 import CreatePostBox from '@/components/shared/CreatePostBox';
 import PostCard from '@/components/shared/PostCard';
+import StoriesBar from '@/components/social/StoriesBar';
+import TrendingPanel from '@/components/social/TrendingPanel';
 
 export default function Feed() {
   const { user } = useOutletContext();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeHashtag, setActiveHashtag] = useState(null);
+  const [feedFilter, setFeedFilter] = useState('all'); // 'all' | 'following'
+  const [followingEmails, setFollowingEmails] = useState([]);
 
   const load = useCallback(async () => {
-    const data = await base44.entities.Post.list('-created_date', 40);
+    const data = await base44.entities.Post.list('-created_date', 60);
     setPosts(data);
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (user?.email && feedFilter === 'following') {
+      base44.entities.Follow.filter({ follower_email: user.email })
+        .then(follows => setFollowingEmails(follows.map(f => f.following_email)))
+        .catch(() => {});
+    }
+  }, [user?.email, feedFilter]);
+
+  const filteredPosts = posts.filter(post => {
+    if (activeHashtag) {
+      const inTags = post.tags?.some(t => t.toLowerCase() === activeHashtag.toLowerCase());
+      const inContent = new RegExp(`#${activeHashtag}`, 'i').test(post.content || '');
+      return inTags || inContent;
+    }
+    if (feedFilter === 'following' && followingEmails.length > 0) {
+      return followingEmails.includes(post.author_email);
+    }
+    return true;
+  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -47,7 +72,7 @@ export default function Feed() {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Quick Links</p>
           {[
             { icon: BookOpen, label: 'My Courses', path: '/classroom', color: 'text-green-500' },
-            { icon: TrendingUp, label: 'Marketplace', path: '/marketplace', color: 'text-rose-500' },
+            { icon: Play, label: 'Reels', path: '/reels', color: 'text-rose-500' },
             { icon: Trophy, label: 'Leaderboard', path: '/leaderboard', color: 'text-amber-500' },
             { icon: Sparkles, label: 'AI Tutor', path: '/ai-tutor', color: 'text-cyan-500' },
           ].map(item => (
@@ -63,6 +88,37 @@ export default function Feed() {
 
       {/* Center – Feed */}
       <div className="lg:col-span-2 space-y-4">
+        {/* Stories */}
+        {user && (
+          <Card className="p-4">
+            <StoriesBar user={user} />
+          </Card>
+        )}
+
+        {/* Feed Filter Tabs */}
+        <div className="flex items-center gap-2">
+          {['all', 'following'].map(f => (
+            <Button
+              key={f}
+              size="sm"
+              variant={feedFilter === f ? 'default' : 'outline'}
+              className={`rounded-full capitalize ${feedFilter === f ? 'gradient-brand border-0' : ''}`}
+              onClick={() => { setFeedFilter(f); setActiveHashtag(null); }}
+            >
+              {f === 'all' ? '🌍 Everyone' : '👥 Following'}
+            </Button>
+          ))}
+          {/* Active hashtag filter */}
+          {activeHashtag && (
+            <Badge className="gradient-brand text-white border-0 gap-1 pl-3 pr-2 py-1.5 text-sm">
+              #{activeHashtag}
+              <button onClick={() => setActiveHashtag(null)} className="ml-1 hover:opacity-70">
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          )}
+        </div>
+
         {user && <CreatePostBox user={user} onPosted={load} />}
 
         {loading ? (
@@ -72,52 +128,32 @@ export default function Feed() {
               <p className="text-sm text-muted-foreground">Loading your feed...</p>
             </div>
           </div>
-        ) : posts.length === 0 ? (
+        ) : filteredPosts.length === 0 ? (
           <Card className="p-12 text-center">
             <Sparkles className="w-12 h-12 text-primary mx-auto mb-3 opacity-50" />
-            <p className="font-semibold text-lg">Your feed is empty</p>
-            <p className="text-muted-foreground text-sm mt-1">Join communities and follow courses to see posts</p>
+            <p className="font-semibold text-lg">
+              {activeHashtag ? `No posts with #${activeHashtag}` : feedFilter === 'following' ? 'No posts from people you follow' : 'Your feed is empty'}
+            </p>
+            <p className="text-muted-foreground text-sm mt-1">
+              {feedFilter === 'following' ? 'Follow people to see their posts here' : 'Be the first to post something!'}
+            </p>
           </Card>
         ) : (
-          posts.map(post => (
-            <PostCard key={post.id} post={post} currentUser={user} onDelete={id => setPosts(p => p.filter(x => x.id !== id))} />
+          filteredPosts.map(post => (
+            <PostCard
+              key={post.id}
+              post={post}
+              currentUser={user}
+              onDelete={id => setPosts(p => p.filter(x => x.id !== id))}
+              onHashtagClick={tag => { setActiveHashtag(tag); setFeedFilter('all'); }}
+            />
           ))
         )}
       </div>
 
       {/* Right – Trending */}
-      <div className="hidden lg:block space-y-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Flame className="w-4 h-4 text-orange-500" />
-            <p className="text-sm font-semibold">Trending Topics</p>
-          </div>
-          <div className="space-y-2">
-            {['#Mathematics', '#Python101', '#StudyGroup', '#ExamPrep', '#ScienceFair'].map(tag => (
-              <div key={tag} className="flex items-center justify-between hover:bg-muted px-2 py-1.5 rounded-lg cursor-pointer">
-                <span className="text-sm font-medium text-primary">{tag}</span>
-                <span className="text-xs text-muted-foreground">{Math.floor(Math.random() * 500 + 50)} posts</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <p className="text-sm font-semibold mb-3">Today's Schedule</p>
-          <div className="space-y-2">
-            {[
-              { time: '9:00 AM', title: 'Math Class', color: 'bg-blue-500' },
-              { time: '11:00 AM', title: 'Quiz Due', color: 'bg-red-500' },
-              { time: '2:00 PM', title: 'Science Lab', color: 'bg-green-500' },
-            ].map(ev => (
-              <div key={ev.time} className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${ev.color}`} />
-                <span className="text-xs text-muted-foreground w-16">{ev.time}</span>
-                <span className="text-xs font-medium">{ev.title}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
+      <div className="hidden lg:block">
+        <TrendingPanel user={user} onHashtagClick={tag => { setActiveHashtag(tag); setFeedFilter('all'); }} />
       </div>
     </div>
   );

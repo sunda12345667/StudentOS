@@ -5,11 +5,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, GraduationCap } from 'lucide-react';
+import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Play } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CommentSection from './CommentSection';
+import { toast } from 'sonner';
 
 const ROLE_COLORS = {
   teacher: 'bg-purple-100 text-purple-700',
@@ -18,11 +19,12 @@ const ROLE_COLORS = {
   parent: 'bg-green-100 text-green-700',
 };
 
-export default function PostCard({ post, currentUser, onDelete }) {
+export default function PostCard({ post, currentUser, onDelete, onHashtagClick }) {
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(post.likes?.includes(currentUser?.email));
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
+  const [shareCount, setShareCount] = useState(post.share_count || 0);
   const isOwner = post.author_email === currentUser?.email;
   const initials = post.author_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
 
@@ -37,9 +39,42 @@ export default function PostCard({ post, currentUser, onDelete }) {
     await base44.entities.Post.update(post.id, { likes: newLikes, like_count: newLikes.length });
   };
 
+  const handleShare = async () => {
+    const newCount = shareCount + 1;
+    setShareCount(newCount);
+    await base44.entities.Post.update(post.id, { share_count: newCount });
+    if (navigator.share) {
+      navigator.share({ title: post.author_name, text: post.content, url: window.location.href }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href).then(() => toast.success('Link copied!')).catch(() => {});
+    }
+  };
+
+  // Extract hashtags from content for clickable links
+  const renderContent = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(#\w+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('#')) {
+        const tag = part.slice(1);
+        return (
+          <button
+            key={i}
+            className="text-primary font-semibold hover:underline"
+            onClick={() => onHashtagClick?.(tag)}
+          >
+            {part}
+          </button>
+        );
+      }
+      return part;
+    });
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <Card className="overflow-hidden hover:shadow-md transition-shadow">
+        {/* Header */}
         <div className="p-4 pb-2 flex items-start justify-between">
           <div className="flex gap-3">
             <Link to={`/profile/${post.author_email}`}>
@@ -49,7 +84,7 @@ export default function PostCard({ post, currentUser, onDelete }) {
               </Avatar>
             </Link>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <Link to={`/profile/${post.author_email}`} className="font-semibold text-sm hover:underline">
                   {post.author_name}
                 </Link>
@@ -79,43 +114,88 @@ export default function PostCard({ post, currentUser, onDelete }) {
           )}
         </div>
 
-        {post.content && <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">{post.content}</p>}
+        {/* Content */}
+        {post.content && (
+          <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
+            {renderContent(post.content)}
+          </p>
+        )}
 
+        {/* Image */}
         {post.image_url && (
           <img src={post.image_url} alt="Post" className="w-full max-h-96 object-cover" />
         )}
 
-        {post.tags?.length > 0 && (
-          <div className="px-4 pt-2 flex flex-wrap gap-1">
-            {post.tags.map(tag => <Badge key={tag} variant="secondary" className="text-xs">#{tag}</Badge>)}
+        {/* Video */}
+        {post.video_url && (
+          <div className="relative bg-black">
+            <video src={post.video_url} controls className="w-full max-h-72 object-contain" />
           </div>
         )}
 
-        {(likeCount > 0 || commentCount > 0) && (
+        {/* Tags */}
+        {post.tags?.length > 0 && (
+          <div className="px-4 pt-2 flex flex-wrap gap-1">
+            {post.tags.map(tag => (
+              <Badge
+                key={tag}
+                variant="secondary"
+                className="text-xs cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors"
+                onClick={() => onHashtagClick?.(tag)}
+              >
+                #{tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+        {/* Stats */}
+        {(likeCount > 0 || commentCount > 0 || shareCount > 0) && (
           <div className="px-4 py-2 flex justify-between text-xs text-muted-foreground border-t border-border/50">
-            {likeCount > 0 && (
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                  <ThumbsUp className="w-2.5 h-2.5 text-white" />
+            <div className="flex items-center gap-3">
+              {likeCount > 0 && (
+                <div className="flex items-center gap-1">
+                  <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                    <ThumbsUp className="w-2.5 h-2.5 text-white" />
+                  </div>
+                  <span>{likeCount}</span>
                 </div>
-                <span>{likeCount}</span>
-              </div>
-            )}
+              )}
+              {shareCount > 0 && <span>{shareCount} shares</span>}
+            </div>
             {commentCount > 0 && (
               <button onClick={() => setShowComments(true)} className="hover:underline">{commentCount} comments</button>
             )}
           </div>
         )}
 
+        {/* Actions */}
         <div className="flex border-t border-border">
-          <Button variant="ghost" className={`flex-1 gap-2 text-sm font-medium py-2.5 ${liked ? 'text-primary' : 'text-muted-foreground'}`} onClick={handleLike}>
-            <ThumbsUp className={`w-4 h-4 ${liked ? 'fill-primary' : ''}`} /> Like
+          <Button
+            variant="ghost"
+            className={`flex-1 gap-2 text-sm font-medium py-2.5 transition-colors ${liked ? 'text-primary' : 'text-muted-foreground hover:text-primary'}`}
+            onClick={handleLike}
+          >
+            <ThumbsUp className={`w-4 h-4 transition-all ${liked ? 'fill-primary scale-110' : ''}`} />
+            <span className="hidden sm:inline">Like</span>
+            {likeCount > 0 && <span className="text-xs">{likeCount}</span>}
           </Button>
-          <Button variant="ghost" className="flex-1 gap-2 text-sm font-medium text-muted-foreground py-2.5" onClick={() => setShowComments(!showComments)}>
-            <MessageCircle className="w-4 h-4" /> Comment
+          <Button
+            variant="ghost"
+            className="flex-1 gap-2 text-sm font-medium text-muted-foreground hover:text-primary py-2.5"
+            onClick={() => setShowComments(!showComments)}
+          >
+            <MessageCircle className="w-4 h-4" />
+            <span className="hidden sm:inline">Comment</span>
+            {commentCount > 0 && <span className="text-xs">{commentCount}</span>}
           </Button>
-          <Button variant="ghost" className="flex-1 gap-2 text-sm font-medium text-muted-foreground py-2.5">
-            <Share2 className="w-4 h-4" /> Share
+          <Button
+            variant="ghost"
+            className="flex-1 gap-2 text-sm font-medium text-muted-foreground hover:text-primary py-2.5"
+            onClick={handleShare}
+          >
+            <Share2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Share</span>
           </Button>
         </div>
 

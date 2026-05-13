@@ -1,20 +1,23 @@
 {
-  "name": "Post",
+  "name": "Reel",
   "type": "object",
   "properties": {
-    "content": {
+    "title": {
       "type": "string"
     },
-    "image_url": {
+    "description": {
       "type": "string"
     },
     "video_url": {
       "type": "string"
     },
-    "author_name": {
+    "thumbnail_url": {
       "type": "string"
     },
     "author_email": {
+      "type": "string"
+    },
+    "author_name": {
       "type": "string"
     },
     "author_avatar": {
@@ -25,8 +28,7 @@
       "enum": [
         "student",
         "teacher",
-        "admin",
-        "parent"
+        "admin"
       ],
       "default": "student"
     },
@@ -44,15 +46,9 @@
       "type": "number",
       "default": 0
     },
-    "share_count": {
+    "view_count": {
       "type": "number",
       "default": 0
-    },
-    "community_id": {
-      "type": "string"
-    },
-    "school_id": {
-      "type": "string"
     },
     "tags": {
       "type": "array",
@@ -60,19 +56,16 @@
         "type": "string"
       }
     },
-    "privacy": {
-      "type": "string",
-      "enum": [
-        "public",
-        "school",
-        "friends"
-      ],
-      "default": "public"
+    "subject": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "string"
     }
   },
   "required": [
-    "content",
     "author_email",
-    "author_name"
+    "author_name",
+    "video_url"
   ]
 }

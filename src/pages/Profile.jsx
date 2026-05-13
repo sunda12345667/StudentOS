@@ -12,6 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Camera, Pencil, BookOpen, Trophy, Flame, Star, Loader2, MapPin, Link as LinkIcon, Zap } from 'lucide-react';
 import PostCard from '@/components/shared/PostCard';
+import FollowButton from '@/components/social/FollowButton';
+import FollowStats from '@/components/social/FollowStats';
 
 export default function Profile() {
   const { email } = useParams();
@@ -96,7 +98,18 @@ export default function Profile() {
               {profile?.location && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{profile.location}</span>}
               {profile?.website && <a href={profile.website} className="flex items-center gap-1 text-primary hover:underline"><LinkIcon className="w-4 h-4" />{profile.website}</a>}
             </div>
+            <div className="mt-2">
+              <FollowStats email={email} />
+            </div>
           </div>
+          {!isOwn && (
+            <FollowButton
+              currentUser={currentUser}
+              targetEmail={email}
+              targetName={profileUser?.full_name}
+              targetAvatar={profile?.avatar_url}
+            />
+          )}
           {isOwn && (
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
               <DialogTrigger asChild>

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, BookOpen, Users, ShoppingBag, Bot, Bell,
   MessageCircle, School, Trophy, ChevronLeft, ChevronRight,
-  GraduationCap, Sparkles, Settings, LogOut
+  GraduationCap, Sparkles, Settings, LogOut, Play
 } from 'lucide-react';
 
 const NAV = [
@@ -20,6 +20,7 @@ const NAV = [
   { icon: MessageCircle,label:'Messages',   path: '/messages',   color: 'text-indigo-500' },
   { icon: Bell,        label: 'Notifications',path:'/notifications',color:'text-orange-500' },
   { icon: Trophy,      label: 'Leaderboard', path: '/leaderboard',color: 'text-yellow-500' },
+  { icon: Play,        label: 'Reels',       path: '/reels',      color: 'text-rose-500' },
 ];
 
 export default function Sidebar({ user, collapsed, onToggle }) {
