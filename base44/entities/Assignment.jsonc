@@ -1,0 +1,54 @@
+{
+  "name": "Assignment",
+  "type": "object",
+  "properties": {
+    "course_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "max_points": {
+      "type": "number",
+      "default": 100
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "homework",
+        "quiz",
+        "project",
+        "exam",
+        "essay"
+      ],
+      "default": "homework"
+    },
+    "attachment_url": {
+      "type": "string"
+    },
+    "teacher_email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft",
+        "closed"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "course_id",
+    "title",
+    "teacher_email"
+  ]
+}

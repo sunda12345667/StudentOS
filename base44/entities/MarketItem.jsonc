@@ -1,0 +1,79 @@
+{
+  "name": "MarketItem",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "price": {
+      "type": "number"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "seller_email": {
+      "type": "string"
+    },
+    "seller_name": {
+      "type": "string"
+    },
+    "seller_avatar": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "textbook",
+        "course",
+        "notes",
+        "tutoring",
+        "equipment",
+        "digital",
+        "other"
+      ]
+    },
+    "condition": {
+      "type": "string",
+      "enum": [
+        "new",
+        "like_new",
+        "good",
+        "fair"
+      ],
+      "default": "good"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "grade_level": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "available",
+        "sold",
+        "reserved"
+      ],
+      "default": "available"
+    },
+    "views": {
+      "type": "number",
+      "default": 0
+    },
+    "is_digital": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "price",
+    "seller_email",
+    "seller_name",
+    "category"
+  ]
+}

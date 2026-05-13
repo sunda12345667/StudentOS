@@ -6,8 +6,7 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Array of participant emails"
+      }
     },
     "participant_names": {
       "type": "array",

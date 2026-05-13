@@ -3,10 +3,6 @@
   "type": "object",
   "properties": {
     "user_email": {
-      "type": "string",
-      "description": "Who receives the notification"
-    },
-    "from_email": {
       "type": "string"
     },
     "from_name": {
@@ -20,20 +16,19 @@
       "enum": [
         "like",
         "comment",
-        "friend_request",
-        "friend_accept",
-        "share",
-        "mention"
-      ],
-      "description": "Type of notification"
+        "assignment",
+        "grade",
+        "enrollment",
+        "announcement",
+        "message",
+        "achievement"
+      ]
     },
     "content": {
-      "type": "string",
-      "description": "Notification message"
+      "type": "string"
     },
     "link": {
-      "type": "string",
-      "description": "Link to navigate to"
+      "type": "string"
     },
     "is_read": {
       "type": "boolean",

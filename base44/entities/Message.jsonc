@@ -17,9 +17,6 @@
     "content": {
       "type": "string"
     },
-    "image_url": {
-      "type": "string"
-    },
     "read_by": {
       "type": "array",
       "items": {

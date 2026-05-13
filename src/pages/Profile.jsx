@@ -1,234 +1,189 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useOutletContext } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Camera, UserPlus, MessageCircle, MoreHorizontal, MapPin, Briefcase, Heart, Loader2, Check, Clock } from 'lucide-react';
-import PostCard from '@/components/feed/PostCard';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Camera, Pencil, BookOpen, Trophy, Flame, Star, Loader2, MapPin, Link as LinkIcon, Zap } from 'lucide-react';
+import PostCard from '@/components/shared/PostCard';
 
 export default function Profile() {
   const { email } = useParams();
   const { user: currentUser } = useOutletContext();
   const [profileUser, setProfileUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [friends, setFriends] = useState([]);
-  const [friendStatus, setFriendStatus] = useState(null); // null, 'pending', 'friends', 'incoming'
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  const isOwnProfile = currentUser?.email === email;
+  const isOwn = currentUser?.email === email;
 
-  const loadProfile = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-
-    // Load user
-    const users = await base44.entities.User.filter({ email });
-    if (users.length > 0) setProfileUser(users[0]);
-
-    // Load posts
-    const userPosts = await base44.entities.Post.filter({ author_email: email }, '-created_date');
-    setPosts(userPosts);
-
-    // Load friends
-    const allFriendReqs = await base44.entities.FriendRequest.filter({ status: 'accepted' });
-    const userFriends = allFriendReqs
-      .filter(r => r.from_email === email || r.to_email === email)
-      .map(r => ({
-        email: r.from_email === email ? r.to_email : r.from_email,
-        name: r.from_email === email ? r.to_name : r.from_name,
-        avatar: r.from_email === email ? r.to_avatar : r.from_avatar,
-      }));
-    setFriends(Array.from(new Map(userFriends.map(f => [f.email, f])).values()));
-
-    // Check friendship status
-    if (!isOwnProfile && currentUser) {
-      const pendingReqs = await base44.entities.FriendRequest.filter({ status: 'pending' });
-      const sentReq = pendingReqs.find(r => r.from_email === currentUser.email && r.to_email === email);
-      const incomingReq = pendingReqs.find(r => r.from_email === email && r.to_email === currentUser.email);
-      const isFriend = allFriendReqs.find(
-        r => (r.from_email === currentUser.email && r.to_email === email) ||
-             (r.to_email === currentUser.email && r.from_email === email)
-      );
-
-      if (isFriend) setFriendStatus('friends');
-      else if (sentReq) setFriendStatus('pending');
-      else if (incomingReq) setFriendStatus('incoming');
-      else setFriendStatus(null);
-    }
-
+    const [users, profs, ps, cs] = await Promise.all([
+      base44.entities.User.filter({ email }),
+      base44.entities.UserProfile.filter({ user_email: email }),
+      base44.entities.Post.filter({ author_email: email }, '-created_date', 20),
+      base44.entities.Course.filter({ teacher_email: email }),
+    ]);
+    if (users.length) setProfileUser(users[0]);
+    if (profs.length) { setProfile(profs[0]); setEditForm(profs[0]); }
+    setPosts(ps);
+    setCourses(cs);
     setLoading(false);
-  }, [email, currentUser, isOwnProfile]);
+  }, [email]);
 
-  useEffect(() => {
-    loadProfile();
-  }, [loadProfile]);
+  useEffect(() => { load(); }, [load]);
 
-  const handleAddFriend = async () => {
-    await base44.entities.FriendRequest.create({
-      from_email: currentUser.email,
-      from_name: currentUser.full_name,
-      from_avatar: currentUser.avatar || '',
-      to_email: email,
-      to_name: profileUser?.full_name || '',
-      to_avatar: profileUser?.avatar || '',
-      status: 'pending',
-    });
-    setFriendStatus('pending');
+  const saveProfile = async () => {
+    setSaving(true);
+    if (profile?.id) {
+      await base44.entities.UserProfile.update(profile.id, editForm);
+    } else {
+      await base44.entities.UserProfile.create({ ...editForm, user_email: email });
+    }
+    await load();
+    setEditOpen(false);
+    setSaving(false);
   };
 
+  const xp = profile?.xp_points || 0;
   const initials = profileUser?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+  const ROLE_COLORS = { student: 'bg-blue-100 text-blue-700', teacher: 'bg-purple-100 text-purple-700', admin: 'bg-red-100 text-red-700' };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
     <div>
-      {/* Cover Photo */}
-      <div className="relative h-48 sm:h-64 md:h-80 bg-gradient-to-r from-primary/30 via-primary/20 to-primary/10">
-        <img
-          src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&h=400&fit=crop"
-          alt="Cover"
-          className="w-full h-full object-cover"
-        />
-        {isOwnProfile && (
-          <Button variant="secondary" size="sm" className="absolute bottom-4 right-4 gap-2 shadow-lg">
-            <Camera className="w-4 h-4" /> Edit Cover Photo
+      {/* Cover */}
+      <div className="h-48 sm:h-64 relative overflow-hidden">
+        {profile?.cover_url ? (
+          <img src={profile.cover_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full gradient-brand opacity-70" />
+        )}
+        {isOwn && (
+          <Button variant="secondary" size="sm" className="absolute bottom-4 right-4 gap-2 shadow">
+            <Camera className="w-4 h-4" />Edit Cover
           </Button>
         )}
       </div>
 
-      {/* Profile Info */}
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-8 sm:-mt-12 relative z-10">
-          <Avatar className="h-32 w-32 sm:h-40 sm:w-40 ring-4 ring-card shadow-xl">
-            <AvatarImage src={profileUser?.avatar} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">{initials}</AvatarFallback>
+      <div className="max-w-5xl mx-auto px-4">
+        {/* Profile Info */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-12 relative z-10 pb-4">
+          <Avatar className="h-28 w-28 sm:h-36 sm:w-36 ring-4 ring-card shadow-xl">
+            <AvatarImage src={profile?.avatar_url} />
+            <AvatarFallback className="gradient-brand text-white text-4xl font-black">{initials}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 pb-4">
-            <h1 className="text-2xl sm:text-3xl font-bold">{profileUser?.full_name}</h1>
-            <p className="text-muted-foreground text-sm">{friends.length} friends</p>
-            <div className="flex -space-x-2 mt-2">
-              {friends.slice(0, 8).map(f => {
-                const fi = f.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-                return (
-                  <Avatar key={f.email} className="h-8 w-8 border-2 border-card">
-                    <AvatarImage src={f.avatar} />
-                    <AvatarFallback className="bg-secondary text-xs">{fi}</AvatarFallback>
-                  </Avatar>
-                );
-              })}
+          <div className="flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl sm:text-3xl font-black">{profileUser?.full_name}</h1>
+              {profile?.role && <Badge className={`${ROLE_COLORS[profile.role] || ''} border-0`}>{profile.role}</Badge>}
+            </div>
+            {profile?.school_name && <p className="text-muted-foreground text-sm mt-0.5">{profile.school_name}</p>}
+            {profile?.bio && <p className="text-sm mt-1 max-w-lg">{profile.bio}</p>}
+            <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+              {profile?.location && <span className="flex items-center gap-1"><MapPin className="w-4 h-4" />{profile.location}</span>}
+              {profile?.website && <a href={profile.website} className="flex items-center gap-1 text-primary hover:underline"><LinkIcon className="w-4 h-4" />{profile.website}</a>}
             </div>
           </div>
-          <div className="flex gap-2 pb-4">
-            {isOwnProfile ? (
-              <Button variant="secondary" className="gap-2">
-                <Camera className="w-4 h-4" /> Edit Profile
-              </Button>
-            ) : (
-              <>
-                {friendStatus === 'friends' ? (
-                  <Button variant="secondary" className="gap-2">
-                    <Check className="w-4 h-4" /> Friends
+          {isOwn && (
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger asChild>
+                <Button className="gradient-brand border-0 gap-2"><Pencil className="w-4 h-4" />Edit Profile</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Edit Profile</DialogTitle></DialogHeader>
+                <div className="space-y-4 mt-2 max-h-[70vh] overflow-y-auto pr-1">
+                  <div><Label>Bio</Label><Textarea value={editForm.bio || ''} onChange={e => setEditForm(p => ({ ...p, bio: e.target.value }))} rows={3} /></div>
+                  <div><Label>School</Label><Input value={editForm.school_name || ''} onChange={e => setEditForm(p => ({ ...p, school_name: e.target.value }))} /></div>
+                  <div><Label>Location</Label><Input value={editForm.location || ''} onChange={e => setEditForm(p => ({ ...p, location: e.target.value }))} /></div>
+                  <div><Label>Website</Label><Input value={editForm.website || ''} onChange={e => setEditForm(p => ({ ...p, website: e.target.value }))} /></div>
+                  <div><Label>Grade Level</Label><Input value={editForm.grade_level || ''} onChange={e => setEditForm(p => ({ ...p, grade_level: e.target.value }))} /></div>
+                  <Button onClick={saveProfile} disabled={saving} className="w-full gradient-brand border-0">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}Save Changes
                   </Button>
-                ) : friendStatus === 'pending' ? (
-                  <Button variant="secondary" className="gap-2" disabled>
-                    <Clock className="w-4 h-4" /> Request Sent
-                  </Button>
-                ) : (
-                  <Button className="gap-2" onClick={handleAddFriend}>
-                    <UserPlus className="w-4 h-4" /> Add Friend
-                  </Button>
-                )}
-                <Button variant="secondary" className="gap-2">
-                  <MessageCircle className="w-4 h-4" /> Message
-                </Button>
-              </>
-            )}
-          </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
-        {/* Tabs */}
-        <Tabs defaultValue="posts" className="mt-4">
-          <TabsList className="bg-card border border-border w-full justify-start">
-            <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="friends">Friends</TabsTrigger>
-            <TabsTrigger value="photos">Photos</TabsTrigger>
-          </TabsList>
+        {/* XP & Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {[
+            { icon: Star, label: 'XP Points', value: xp, color: 'text-amber-500', bg: 'bg-amber-50' },
+            { icon: Flame, label: 'Day Streak', value: profile?.streak_days || 0, color: 'text-orange-500', bg: 'bg-orange-50' },
+            { icon: BookOpen, label: 'Courses', value: profile?.courses_enrolled || 0, color: 'text-blue-500', bg: 'bg-blue-50' },
+            { icon: Trophy, label: 'Assignments', value: profile?.assignments_done || 0, color: 'text-purple-500', bg: 'bg-purple-50' },
+          ].map(stat => (
+            <Card key={stat.label} className="p-4 flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center flex-shrink-0`}>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              </div>
+              <div>
+                <p className="text-xl font-black">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4 pb-8">
-            <TabsContent value="posts" className="col-span-full md:col-span-3 md:col-start-2 space-y-4 mt-0">
-              {posts.length === 0 ? (
-                <Card className="p-8 text-center text-muted-foreground">
-                  No posts yet
-                </Card>
-              ) : (
-                posts.map(post => (
-                  <PostCard key={post.id} post={post} currentUser={currentUser} />
-                ))
-              )}
-            </TabsContent>
-
-            <TabsContent value="about" className="col-span-full md:col-span-3 md:col-start-2 mt-0">
-              <Card className="p-6 space-y-4">
-                <h2 className="font-semibold text-lg">About</h2>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 text-sm">
-                    <Briefcase className="w-5 h-5 text-muted-foreground" />
-                    <span>Works at <span className="font-semibold">Company</span></span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <MapPin className="w-5 h-5 text-muted-foreground" />
-                    <span>Lives in <span className="font-semibold">City</span></span>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm">
-                    <Heart className="w-5 h-5 text-muted-foreground" />
-                    <span>Single</span>
-                  </div>
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="friends" className="col-span-full md:col-span-3 md:col-start-2 mt-0">
-              <Card className="p-6">
-                <h2 className="font-semibold text-lg mb-4">Friends · {friends.length}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {friends.map(f => {
-                    const fi = f.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-                    return (
-                      <div key={f.email} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={f.avatar} />
-                          <AvatarFallback className="bg-primary/10 text-primary">{fi}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium truncate">{f.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="photos" className="col-span-full md:col-span-3 md:col-start-2 mt-0">
-              <Card className="p-6">
-                <h2 className="font-semibold text-lg mb-4">Photos</h2>
-                <div className="grid grid-cols-3 gap-2">
-                  {posts.filter(p => p.image_url).map(p => (
-                    <img key={p.id} src={p.image_url} alt="" className="w-full aspect-square object-cover rounded-lg" />
-                  ))}
-                  {posts.filter(p => p.image_url).length === 0 && (
-                    <p className="col-span-3 text-muted-foreground text-center py-8">No photos yet</p>
-                  )}
-                </div>
-              </Card>
-            </TabsContent>
+        {/* XP Progress */}
+        <Card className="p-4 mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Zap className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-sm">Learning Progress</span>
+            </div>
+            <Badge className="bg-primary/10 text-primary border-0 text-xs">{xp} XP</Badge>
           </div>
+          <div className="w-full bg-muted rounded-full h-3">
+            <div className="gradient-brand h-3 rounded-full transition-all" style={{ width: `${Math.min(100, (xp % 500) / 5)}%` }} />
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{500 - (xp % 500)} XP to next level</p>
+        </Card>
+
+        <Tabs defaultValue="posts">
+          <TabsList className="mb-6">
+            <TabsTrigger value="posts">Posts ({posts.length})</TabsTrigger>
+            <TabsTrigger value="courses">Courses ({courses.length})</TabsTrigger>
+          </TabsList>
+          <TabsContent value="posts">
+            <div className="max-w-xl space-y-4 pb-8">
+              {posts.length === 0 ? (
+                <Card className="p-10 text-center text-muted-foreground">No posts yet</Card>
+              ) : (
+                posts.map(p => <PostCard key={p.id} post={p} currentUser={currentUser} onDelete={id => setPosts(prev => prev.filter(x => x.id !== id))} />)
+              )}
+            </div>
+          </TabsContent>
+          <TabsContent value="courses">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-8">
+              {courses.map(c => (
+                <Card key={c.id} className="p-4 flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.color || 'from-blue-500 to-indigo-600'} flex items-center justify-center`}>
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">{c.title}</p>
+                    <p className="text-xs text-muted-foreground">{c.student_count || 0} students</p>
+                  </div>
+                </Card>
+              ))}
+              {courses.length === 0 && <Card className="col-span-2 p-10 text-center text-muted-foreground">No courses yet</Card>}
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
     </div>

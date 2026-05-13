@@ -3,31 +3,35 @@
   "type": "object",
   "properties": {
     "content": {
-      "type": "string",
-      "description": "Text content of the post"
+      "type": "string"
     },
     "image_url": {
-      "type": "string",
-      "description": "Optional image URL"
+      "type": "string"
     },
     "author_name": {
-      "type": "string",
-      "description": "Display name of the author"
+      "type": "string"
     },
     "author_email": {
-      "type": "string",
-      "description": "Email of the author"
+      "type": "string"
     },
     "author_avatar": {
+      "type": "string"
+    },
+    "author_role": {
       "type": "string",
-      "description": "Avatar URL of the author"
+      "enum": [
+        "student",
+        "teacher",
+        "admin",
+        "parent"
+      ],
+      "default": "student"
     },
     "likes": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Array of user emails who liked"
+      }
     },
     "like_count": {
       "type": "number",
@@ -41,16 +45,24 @@
       "type": "number",
       "default": 0
     },
-    "feeling": {
-      "type": "string",
-      "description": "Feeling/activity tag"
+    "community_id": {
+      "type": "string"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "privacy": {
       "type": "string",
       "enum": [
         "public",
-        "friends",
-        "only_me"
+        "school",
+        "friends"
       ],
       "default": "public"
     }

@@ -3,8 +3,7 @@
   "type": "object",
   "properties": {
     "post_id": {
-      "type": "string",
-      "description": "ID of the parent post"
+      "type": "string"
     },
     "content": {
       "type": "string"
@@ -22,8 +21,7 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Emails of users who liked"
+      }
     },
     "like_count": {
       "type": "number",

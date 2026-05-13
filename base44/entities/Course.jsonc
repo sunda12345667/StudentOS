@@ -1,0 +1,71 @@
+{
+  "name": "Course",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "teacher_email": {
+      "type": "string"
+    },
+    "teacher_name": {
+      "type": "string"
+    },
+    "teacher_avatar": {
+      "type": "string"
+    },
+    "cover_url": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "grade_level": {
+      "type": "string"
+    },
+    "enrolled_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "student_count": {
+      "type": "number",
+      "default": 0
+    },
+    "schedule": {
+      "type": "string"
+    },
+    "price": {
+      "type": "number",
+      "default": 0
+    },
+    "is_free": {
+      "type": "boolean",
+      "default": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "color": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title",
+    "teacher_email",
+    "teacher_name"
+  ]
+}
