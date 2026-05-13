@@ -6,13 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingBag, Search, Plus, Loader2, SlidersHorizontal, TrendingUp, Package, ShieldCheck, BarChart2 } from 'lucide-react';
+import { ShoppingBag, Search, Plus, Loader2, SlidersHorizontal, TrendingUp, Package, ShieldCheck, BarChart2, Wallet } from 'lucide-react';
 import ItemCard, { CAT_CONFIG } from '@/components/marketplace/ItemCard';
 import ItemDetail from '@/components/marketplace/ItemDetail';
 import CreateListing from '@/components/marketplace/CreateListing';
 import MyListings from '@/components/marketplace/MyListings';
 import OrderManagement from '@/components/marketplace/OrderManagement';
 import SellerAnalytics from '@/components/marketplace/SellerAnalytics';
+import WalletDashboard from '@/components/marketplace/WalletDashboard';
 
 const SORT_OPTIONS = [
   { value: '-created_date', label: 'Newest First' },
@@ -102,6 +103,7 @@ export default function Marketplace() {
           <TabsTrigger value="my-listings" className="gap-1.5"><Package className="w-4 h-4" />My Listings</TabsTrigger>
           <TabsTrigger value="orders" className="gap-1.5"><ShieldCheck className="w-4 h-4" />Orders</TabsTrigger>
           <TabsTrigger value="analytics" className="gap-1.5"><BarChart2 className="w-4 h-4" />Analytics</TabsTrigger>
+          <TabsTrigger value="wallet" className="gap-1.5"><Wallet className="w-4 h-4" />Wallet</TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse">
@@ -177,6 +179,10 @@ export default function Marketplace() {
 
         <TabsContent value="analytics">
           <SellerAnalytics user={user} />
+        </TabsContent>
+
+        <TabsContent value="wallet">
+          <WalletDashboard user={user} />
         </TabsContent>
       </Tabs>
 

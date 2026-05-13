@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ShieldCheck, Truck, CheckCircle2, XCircle, Clock, Package, Loader2, AlertTriangle, ShoppingBag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { getOrCreateWallet, recordTransaction } from '@/lib/wallet';
 import { motion } from 'framer-motion';
 
 const STATUS_CONFIG = {
@@ -113,8 +114,44 @@ export default function OrderManagement({ user }) {
   const handleAction = async (order, action, tracking = '') => {
     const updates = { status: action };
     if (action === 'shipped' && tracking) updates.tracking_info = tracking;
-    if (action === 'completed') { updates.escrow_released = true; await base44.entities.MarketItem.update(order.item_id, { status: 'sold' }).catch(() => {}); }
-    if (action === 'cancelled') await base44.entities.MarketItem.update(order.item_id, { status: 'available' }).catch(() => {});
+
+    if (action === 'completed') {
+      updates.escrow_released = true;
+      // Credit seller wallet
+      const sellerWallet = await getOrCreateWallet(order.seller_email, order.seller_name);
+      await recordTransaction(sellerWallet, {
+        type: 'escrow_release',
+        amount: order.price,
+        description: `Payment received for "${order.item_title}"`,
+        orderId: order.id,
+        counterpartyEmail: order.buyer_email,
+        counterpartyName: order.buyer_name,
+      });
+      await base44.entities.MarketItem.update(order.item_id, { status: 'sold' }).catch(() => {});
+      // Notify seller
+      await base44.entities.Notification.create({
+        user_email: order.seller_email, from_name: order.buyer_name,
+        type: 'announcement',
+        content: `₦${Number(order.price).toLocaleString()} has been released to your wallet for "${order.item_title}"`,
+      }).catch(() => {});
+    }
+
+    if (action === 'cancelled') {
+      // Refund buyer if escrow was held
+      if (order.status === 'escrow_held') {
+        const buyerWallet = await getOrCreateWallet(order.buyer_email, order.buyer_name);
+        await recordTransaction(buyerWallet, {
+          type: 'refund',
+          amount: order.price,
+          description: `Refund for cancelled order: "${order.item_title}"`,
+          orderId: order.id,
+          counterpartyEmail: order.seller_email,
+          counterpartyName: order.seller_name,
+        });
+      }
+      await base44.entities.MarketItem.update(order.item_id, { status: 'available' }).catch(() => {});
+    }
+
     await base44.entities.Order.update(order.id, updates);
     setBuying(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
     setSelling(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));

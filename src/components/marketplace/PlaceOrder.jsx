@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Truck, MapPin, Download, ShieldCheck, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
+import { getOrCreateWallet, recordTransaction } from '@/lib/wallet';
 
 const DELIVERY_OPTIONS = [
   { value: 'pickup', icon: MapPin, label: 'Pickup', desc: 'Meet the seller in person', color: 'border-blue-200 bg-blue-50 text-blue-700' },
@@ -25,6 +26,14 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
 
   const placeOrder = async () => {
     setSaving(true);
+    // Check wallet balance
+    const wallet = await getOrCreateWallet(buyer.email, buyer.full_name);
+    if (wallet.balance < item.price) {
+      setSaving(false);
+      toast.error(`Insufficient wallet balance (₦${wallet.balance.toLocaleString()}). Please fund your wallet first.`);
+      return;
+    }
+    // Create order
     const order = await base44.entities.Order.create({
       item_id: item.id, item_title: item.title, item_image: item.image_url || '',
       buyer_email: buyer.email, buyer_name: buyer.full_name,
@@ -33,17 +42,26 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
       delivery_address: delivery === 'delivery' ? address : '',
       notes: notes.trim(), status: 'escrow_held', escrow_released: false,
     });
+    // Debit buyer wallet (escrow hold)
+    await recordTransaction(wallet, {
+      type: 'escrow_hold',
+      amount: item.price,
+      description: `Escrow hold for "${item.title}"`,
+      orderId: order.id,
+      counterpartyEmail: item.seller_email,
+      counterpartyName: item.seller_name,
+    });
     // Mark item reserved
     await base44.entities.MarketItem.update(item.id, { status: 'reserved' });
     // Notify seller
     await base44.entities.Notification.create({
       user_email: item.seller_email, from_name: buyer.full_name,
       type: 'announcement',
-      content: `New order for "${item.title}" — payment held in escrow`,
+      content: `New order for "${item.title}" — ₦${Number(item.price).toLocaleString()} held in escrow`,
     }).catch(() => {});
     setSaving(false);
     setStep(3);
-    toast.success('Order placed! Payment held in escrow.');
+    toast.success('Order placed! Payment deducted & held in escrow.');
   };
 
   return (
@@ -107,12 +125,12 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-center">
               <ShieldCheck className="w-10 h-10 text-amber-600 mx-auto mb-2" />
               <p className="font-bold text-amber-900">Escrow Protection</p>
-              <p className="text-xs text-amber-800 mt-1">Your payment of <strong>${Number(item.price).toFixed(2)}</strong> will be held securely until you confirm receipt. The seller only gets paid after you're satisfied.</p>
+              <p className="text-xs text-amber-800 mt-1">₦<strong>{Number(item.price).toLocaleString()}</strong> will be deducted from your wallet and held securely until you confirm receipt. The seller only gets paid after you're satisfied.</p>
             </div>
             <div className="rounded-xl bg-muted p-4 space-y-2 text-sm">
               {[
                 ['Item', item.title],
-                ['Price', `$${Number(item.price).toFixed(2)}`],
+                ['Price', `₦${Number(item.price).toLocaleString()}`],
                 ['Delivery', DELIVERY_OPTIONS.find(d => d.value === delivery)?.label],
                 delivery === 'delivery' && ['Address', address],
               ].filter(Boolean).map(([k, v]) => (
