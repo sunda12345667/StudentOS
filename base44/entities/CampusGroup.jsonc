@@ -1,0 +1,76 @@
+{
+  "name": "CampusGroup",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "department",
+        "class",
+        "faculty",
+        "club",
+        "study",
+        "campus",
+        "general"
+      ],
+      "default": "general"
+    },
+    "school_id": {
+      "type": "string"
+    },
+    "admin_email": {
+      "type": "string"
+    },
+    "member_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "member_count": {
+      "type": "number",
+      "default": 0
+    },
+    "cover_color": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string"
+    },
+    "is_private": {
+      "type": "boolean",
+      "default": false
+    },
+    "timetable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string"
+          },
+          "time": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "room": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "name",
+    "admin_email",
+    "type"
+  ]
+}

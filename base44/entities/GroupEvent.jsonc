@@ -1,0 +1,57 @@
+{
+  "name": "GroupEvent",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "location": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "class",
+        "exam",
+        "meeting",
+        "trip",
+        "social",
+        "deadline",
+        "other"
+      ],
+      "default": "other"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "creator_name": {
+      "type": "string"
+    },
+    "rsvp_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "group_id",
+    "title",
+    "event_date",
+    "created_by"
+  ]
+}

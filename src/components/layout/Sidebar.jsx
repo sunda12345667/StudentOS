@@ -21,6 +21,7 @@ const NAV = [
   { icon: Bell,        label: 'Notifications',path:'/notifications',color:'text-orange-500' },
   { icon: Trophy,      label: 'Leaderboard', path: '/leaderboard',color: 'text-yellow-500' },
   { icon: Play,        label: 'Reels',       path: '/reels',      color: 'text-rose-500' },
+  { icon: GraduationCap, label: 'Campus',    path: '/campus',     color: 'text-indigo-500' },
 ];
 
 export default function Sidebar({ user, collapsed, onToggle }) {

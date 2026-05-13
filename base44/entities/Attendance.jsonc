@@ -1,0 +1,51 @@
+{
+  "name": "Attendance",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string"
+    },
+    "event_id": {
+      "type": "string"
+    },
+    "session_label": {
+      "type": "string"
+    },
+    "session_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "marked_by": {
+      "type": "string"
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "present",
+              "absent",
+              "late",
+              "excused"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "group_id",
+    "session_label",
+    "session_date",
+    "marked_by"
+  ]
+}

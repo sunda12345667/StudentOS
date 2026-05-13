@@ -1,0 +1,49 @@
+{
+  "name": "Poll",
+  "type": "object",
+  "properties": {
+    "group_id": {
+      "type": "string"
+    },
+    "question": {
+      "type": "string"
+    },
+    "options": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "votes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "creator_name": {
+      "type": "string"
+    },
+    "ends_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_closed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "group_id",
+    "question",
+    "options",
+    "created_by"
+  ]
+}

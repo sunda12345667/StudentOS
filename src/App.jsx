@@ -26,6 +26,8 @@ import Notifications from '@/pages/Notifications';
 import Profile from '@/pages/Profile';
 import Leaderboard from '@/pages/Leaderboard';
 import Reels from '@/pages/Reels';
+import CampusGroups from '@/pages/CampusGroups';
+import CampusGroupDetail from '@/pages/CampusGroupDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -72,6 +74,8 @@ const AuthenticatedApp = () => {
           <Route path="/profile/:email" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/reels" element={<Reels />} />
+          <Route path="/campus" element={<CampusGroups />} />
+          <Route path="/campus/:id" element={<CampusGroupDetail />} />
         </Route>
       </Route>
 
