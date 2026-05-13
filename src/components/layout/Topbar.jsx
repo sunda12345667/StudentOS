@@ -9,10 +9,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
+import { useTheme } from '@/lib/ThemeContext';
 
 export default function Topbar({ user, sidebarCollapsed }) {
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const initials = user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
 
   return (
@@ -30,6 +32,9 @@ export default function Topbar({ user, sidebarCollapsed }) {
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
+        <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full h-9 w-9">
+          {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="rounded-full p-0 h-9 w-9">
