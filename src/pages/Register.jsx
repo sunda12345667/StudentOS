@@ -1,14 +1,38 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, User, CheckCircle2 } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
-import AuthLayout from "@/components/AuthLayout";
-import GoogleIcon from "@/components/GoogleIcon";
 import { toast } from "@/components/ui/use-toast";
+import ImmersiveLeft from "../components/auth/ImmersiveLeft";
+import GoogleIcon from "@/components/GoogleIcon";
+
+function PasswordStrength({ password }) {
+  const checks = [
+    password.length >= 8,
+    /[A-Z]/.test(password),
+    /[0-9]/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+  ];
+  const strength = checks.filter(Boolean).length;
+  const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-emerald-500'];
+  const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+
+  if (!password) return null;
+  return (
+    <div className="mt-2">
+      <div className="flex gap-1 mb-1">
+        {[0, 1, 2, 3].map(i => (
+          <div key={i} className={`h-1 flex-1 rounded-full transition-all duration-500 ${i < strength ? colors[strength - 1] : 'bg-white/10'}`} />
+        ))}
+      </div>
+      <p className={`text-[10px] font-medium ${strength >= 3 ? 'text-emerald-400' : strength >= 2 ? 'text-yellow-400' : 'text-red-400'}`}>
+        {labels[strength - 1] || 'Weak'} password
+      </p>
+    </div>
+  );
+}
 
 export default function Register() {
   const [email, setEmail] = useState("");
@@ -18,14 +42,13 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+    if (password !== confirmPassword) { setError("Passwords do not match"); return; }
     setLoading(true);
     try {
       await base44.auth.register({ email, password });
@@ -42,9 +65,7 @@ export default function Register() {
     setLoading(true);
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) {
-        base44.auth.setToken(result.access_token);
-      }
+      if (result?.access_token) base44.auth.setToken(result.access_token);
       window.location.href = "/";
     } catch (err) {
       setError(err.message || "Invalid verification code");
@@ -54,175 +75,184 @@ export default function Register() {
   };
 
   const handleResend = async () => {
-    setError("");
     try {
       await base44.auth.resendOtp(email);
-      toast({
-        title: "Code sent",
-        description: "Check your email for the new code.",
-      });
+      toast({ title: "Code sent", description: "Check your email for the new code." });
     } catch (err) {
       setError(err.message || "Failed to resend code");
     }
   };
 
-  const handleGoogle = () => {
-    base44.auth.loginWithProvider("google", "/");
-  };
+  const handleGoogle = () => base44.auth.loginWithProvider("google", "/");
 
+  const inputClass = (field) => `relative flex items-center rounded-xl border transition-all duration-300 overflow-hidden
+    ${focusedField === field ? 'border-blue-500/50 bg-white/[0.06]' : 'border-white/[0.08] bg-white/[0.03]'}`;
+
+  // OTP screen
   if (showOtp) {
     return (
-      <AuthLayout
-        icon={Mail}
-        title="Verify your email"
-        subtitle={`We sent a code to ${email}`}
-      >
-        {error && (
-          <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-            {error}
-          </div>
-        )}
-        <div className="flex justify-center mb-6">
-          <InputOTP
-            maxLength={6}
-            value={otpCode}
-            onChange={setOtpCode}
-            autoFocus
-            autoComplete="one-time-code"
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
+      <div className="min-h-screen flex bg-[#030712]">
+        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-shrink-0"><ImmersiveLeft /></div>
+        <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f2e] via-[#030712] to-[#0d0521]" />
+          <div className="absolute top-1/3 right-1/3 w-64 h-64 bg-purple-600/10 rounded-full blur-[80px]" />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
+            className="relative z-10 w-full max-w-sm text-center">
+            <motion.div animate={{ rotate: [0, 360] }} transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
+              className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center mx-auto mb-6">
+              <Mail className="w-7 h-7 text-cyan-400" />
+            </motion.div>
+            <h2 className="text-white font-black text-3xl mb-2 tracking-tight">Verify Email</h2>
+            <p className="text-white/40 text-sm mb-8">
+              We sent a 6-digit code to<br />
+              <span className="text-blue-400 font-medium">{email}</span>
+            </p>
+            {error && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {error}
+              </motion.div>
+            )}
+            <div className="flex justify-center mb-6">
+              <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode} autoFocus autoComplete="one-time-code">
+                <InputOTPGroup className="gap-2">
+                  {[0,1,2,3,4,5].map(i => (
+                    <InputOTPSlot key={i} index={i}
+                      className="w-11 h-13 rounded-xl border-white/10 bg-white/[0.04] text-white text-lg font-bold" />
+                  ))}
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+            <motion.button onClick={handleVerify} disabled={loading || otpCode.length < 6}
+              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all mb-4">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Verifying...</> : <><CheckCircle2 className="w-4 h-4" />Verify & Enter Campus</>}
+            </motion.button>
+            <p className="text-white/30 text-sm">
+              Didn't receive it?{" "}
+              <button onClick={handleResend} className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">
+                Resend code
+              </button>
+            </p>
+          </motion.div>
         </div>
-        <Button
-          className="w-full h-12 font-medium"
-          onClick={handleVerify}
-          disabled={loading || otpCode.length < 6}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Verifying...
-            </>
-          ) : (
-            "Verify"
-          )}
-        </Button>
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Didn't receive the code?{" "}
-          <button onClick={handleResend} className="text-primary font-medium hover:underline">
-            Resend
-          </button>
-        </p>
-      </AuthLayout>
+      </div>
     );
   }
 
   return (
-    <AuthLayout
-      icon={UserPlus}
-      title="Create your account"
-      subtitle="Sign up to get started"
-      footer={
-        <>
-          Already have an account?{" "}
-          <Link to="/login" className="text-primary font-medium hover:underline">
-            Log in
-          </Link>
-        </>
-      }
-    >
-      <Button
-        variant="outline"
-        className="w-full h-12 text-sm font-medium mb-6"
-        onClick={handleGoogle}
-      >
-        <GoogleIcon className="w-5 h-5 mr-2" />
-        Continue with Google
-      </Button>
+    <div className="min-h-screen flex bg-[#030712]">
+      <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-shrink-0"><ImmersiveLeft /></div>
 
-      <div className="relative mb-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-3 text-muted-foreground">or</span>
-        </div>
-      </div>
+      <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f2e] via-[#030712] to-[#0d0521]" />
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-600/10 rounded-full blur-[80px]" />
+        <div className="absolute bottom-1/4 left-1/4 w-48 h-48 bg-purple-600/10 rounded-full blur-[60px]" />
 
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
-        </div>
-      )}
+        <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="relative z-10 w-full max-w-sm">
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="email"
-              type="email"
-              autoComplete="email"
-              autoFocus
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+          {/* Mobile logo */}
+          <div className="flex items-center justify-center gap-2.5 mb-8 lg:hidden">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-xl">
+              <span className="text-white font-black text-lg">S</span>
+            </div>
+            <span className="text-white font-black text-xl tracking-tight">StudentOS</span>
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+
+          <div className="mb-8">
+            <p className="text-purple-400/80 text-xs font-semibold tracking-[0.2em] uppercase mb-2">Join the movement 🚀</p>
+            <h1 className="text-white font-black text-3xl tracking-tight">Create your<br />
+              <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">campus account</span>
+            </h1>
+            <p className="text-white/40 text-sm mt-2">Join 250,000+ students worldwide.</p>
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
+
+          {/* Google */}
+          <motion.button whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }} onClick={handleGoogle}
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/[0.05] hover:bg-white/[0.09] text-white/80 hover:text-white text-sm font-medium transition-all mb-6">
+            <GoogleIcon className="w-4 h-4" />Continue with Google
+          </motion.button>
+
+          <div className="flex items-center gap-3 mb-6">
+            <div className="flex-1 h-px bg-white/[0.08]" />
+            <span className="text-white/25 text-xs">or sign up with email</span>
+            <div className="flex-1 h-px bg-white/[0.08]" />
           </div>
-        </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating account...
-            </>
-          ) : (
-            "Create account"
+
+          {error && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full bg-red-500/20 flex items-center justify-center text-[10px] flex-shrink-0">!</span>
+              {error}
+            </motion.div>
           )}
-        </Button>
-      </form>
-    </AuthLayout>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Email */}
+            <div className="relative">
+              <motion.div animate={{ opacity: focusedField === 'email' ? 1 : 0 }}
+                className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 blur-sm pointer-events-none" />
+              <div className={inputClass('email')}>
+                <Mail className={`absolute left-4 w-4 h-4 transition-colors ${focusedField === 'email' ? 'text-blue-400' : 'text-white/25'}`} />
+                <input type="email" autoComplete="email" placeholder="Student email" value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  onFocus={() => setFocusedField('email')} onBlur={() => setFocusedField(null)}
+                  className="w-full h-12 bg-transparent pl-11 pr-4 text-white text-sm placeholder-white/25 outline-none" required />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="relative">
+              <motion.div animate={{ opacity: focusedField === 'password' ? 1 : 0 }}
+                className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 blur-sm pointer-events-none" />
+              <div className={inputClass('password')}>
+                <Lock className={`absolute left-4 w-4 h-4 transition-colors ${focusedField === 'password' ? 'text-blue-400' : 'text-white/25'}`} />
+                <input type={showPass ? 'text' : 'password'} autoComplete="new-password" placeholder="Create password"
+                  value={password} onChange={e => setPassword(e.target.value)}
+                  onFocus={() => setFocusedField('password')} onBlur={() => setFocusedField(null)}
+                  className="w-full h-12 bg-transparent pl-11 pr-12 text-white text-sm placeholder-white/25 outline-none" required />
+                <button type="button" onClick={() => setShowPass(s => !s)}
+                  className="absolute right-4 text-white/25 hover:text-white/60 transition-colors">
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <PasswordStrength password={password} />
+            </div>
+
+            {/* Confirm */}
+            <div className="relative">
+              <motion.div animate={{ opacity: focusedField === 'confirm' ? 1 : 0 }}
+                className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 blur-sm pointer-events-none" />
+              <div className={inputClass('confirm')}>
+                <Lock className={`absolute left-4 w-4 h-4 transition-colors ${focusedField === 'confirm' ? 'text-blue-400' : 'text-white/25'}`} />
+                <input type="password" autoComplete="new-password" placeholder="Confirm password"
+                  value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                  onFocus={() => setFocusedField('confirm')} onBlur={() => setFocusedField(null)}
+                  className="w-full h-12 bg-transparent pl-11 pr-4 text-white text-sm placeholder-white/25 outline-none" required />
+                {confirmPassword && password === confirmPassword && (
+                  <CheckCircle2 className="absolute right-4 w-4 h-4 text-emerald-400" />
+                )}
+              </div>
+            </div>
+
+            <motion.button type="submit" disabled={loading}
+              whileHover={{ scale: loading ? 1 : 1.01 }} whileTap={{ scale: loading ? 1 : 0.99 }}
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-purple-500/25 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed transition-all mt-2">
+              {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Creating account...</> : <>Join StudentOS <ArrowRight className="w-4 h-4" /></>}
+            </motion.button>
+          </form>
+
+          <p className="text-center text-white/30 text-sm mt-6">
+            Already a student?{" "}
+            <Link to="/login" className="text-blue-400 font-semibold hover:text-blue-300 transition-colors">Sign in</Link>
+          </p>
+          <p className="text-center text-white/15 text-[10px] mt-4">
+            By joining, you agree to our Terms & Privacy Policy
+          </p>
+        </motion.div>
+      </div>
+    </div>
   );
 }
