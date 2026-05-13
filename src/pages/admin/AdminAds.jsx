@@ -11,8 +11,9 @@ import {
 } from 'recharts';
 import {
   Megaphone, Eye, MousePointer, DollarSign, Plus, Search, CheckCircle2,
-  XCircle, Pause, Play, Loader2, Image, Upload, Filter
+  XCircle, Pause, Play, Loader2, ClipboardCheck
 } from 'lucide-react';
+import CampaignReviewModal from '@/components/admin/CampaignReviewModal';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -126,6 +127,7 @@ export default function AdminAds() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
+  const [reviewCampaign, setReviewCampaign] = useState(null);
 
   const loadAds = () => {
     base44.entities.AdCampaign.list('-created_date', 100)
@@ -139,6 +141,10 @@ export default function AdminAds() {
     await base44.entities.AdCampaign.update(ad.id, { status: newStatus }).catch(() => {});
     setAds(prev => prev.map(a => a.id === ad.id ? { ...a, status: newStatus } : a));
     toast.success(`Campaign ${newStatus}`);
+  };
+
+  const handleReviewDecision = (campaignId, newStatus) => {
+    setAds(prev => prev.map(a => a.id === campaignId ? { ...a, status: newStatus } : a));
   };
 
   const filtered = ads.filter(a => {
@@ -218,14 +224,9 @@ export default function AdminAds() {
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
                       {ad.status === 'pending' && (
-                        <>
-                          <button onClick={() => updateStatus(ad, 'active')} className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors" title="Approve">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button onClick={() => updateStatus(ad, 'rejected')} className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors" title="Reject">
-                            <XCircle className="w-3.5 h-3.5" />
-                          </button>
-                        </>
+                        <button onClick={() => setReviewCampaign(ad)} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors text-[11px] font-semibold" title="Review Campaign">
+                          <ClipboardCheck className="w-3.5 h-3.5" />Review
+                        </button>
                       )}
                       {ad.status === 'active' && (
                         <button onClick={() => updateStatus(ad, 'paused')} className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors" title="Pause">
@@ -247,6 +248,12 @@ export default function AdminAds() {
       </div>
 
       <CreateAdModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={loadAds} />
+      <CampaignReviewModal
+        campaign={reviewCampaign}
+        open={!!reviewCampaign}
+        onClose={() => setReviewCampaign(null)}
+        onDecision={handleReviewDecision}
+      />
     </div>
   );
 }
