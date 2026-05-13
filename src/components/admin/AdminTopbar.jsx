@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { Bell, Search, Menu, ChevronDown, Zap } from 'lucide-react';
+import { Bell, Search, Menu, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { base44 } from '@/api/base44Client';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function AdminTopbar({ user, onMenuOpen, title, subtitle }) {
   const [searchFocused, setSearchFocused] = useState(false);
@@ -38,18 +40,35 @@ export default function AdminTopbar({ user, onMenuOpen, title, subtitle }) {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full" />
         </button>
 
-        <div className="flex items-center gap-2.5 pl-3 border-l border-white/10">
-          <Avatar className="w-8 h-8 border border-blue-500/40">
-            <AvatarImage src={user?.avatar_url} />
-            <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xs font-bold">
-              {user?.full_name?.[0] || 'A'}
-            </AvatarFallback>
-          </Avatar>
-          <div className="hidden sm:block">
-            <p className="text-white text-xs font-semibold">{user?.full_name || 'Admin'}</p>
-            <p className="text-white/40 text-[10px]">Platform Owner</p>
-          </div>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex items-center gap-2.5 pl-3 border-l border-white/10 hover:opacity-80 transition-opacity outline-none">
+              <Avatar className="w-8 h-8 border border-blue-500/40">
+                <AvatarImage src={user?.avatar_url} />
+                <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xs font-bold">
+                  {user?.full_name?.[0] || 'A'}
+                </AvatarFallback>
+              </Avatar>
+              <div className="hidden sm:block text-left">
+                <p className="text-white text-xs font-semibold">{user?.full_name || 'Admin'}</p>
+                <p className="text-white/40 text-[10px]">Platform Owner</p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 bg-[#0d1220] border-white/10 text-white">
+            <div className="px-3 py-2">
+              <p className="text-white text-xs font-semibold">{user?.full_name || 'Admin'}</p>
+              <p className="text-white/40 text-[10px] truncate">{user?.email || ''}</p>
+            </div>
+            <DropdownMenuSeparator className="bg-white/10" />
+            <DropdownMenuItem
+              onClick={() => base44.auth.logout('/')}
+              className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer gap-2"
+            >
+              <LogOut className="w-3.5 h-3.5" /> Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
