@@ -1,0 +1,38 @@
+{
+  "name": "Story",
+  "type": "object",
+  "properties": {
+    "author_email": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string"
+    },
+    "author_avatar": {
+      "type": "string"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "text_overlay": {
+      "type": "string"
+    },
+    "background_color": {
+      "type": "string"
+    },
+    "viewers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "author_email",
+    "author_name"
+  ]
+}

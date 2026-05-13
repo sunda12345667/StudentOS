@@ -1,0 +1,63 @@
+{
+  "name": "Post",
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "Text content of the post"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Optional image URL"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Display name of the author"
+    },
+    "author_email": {
+      "type": "string",
+      "description": "Email of the author"
+    },
+    "author_avatar": {
+      "type": "string",
+      "description": "Avatar URL of the author"
+    },
+    "likes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Array of user emails who liked"
+    },
+    "like_count": {
+      "type": "number",
+      "default": 0
+    },
+    "comment_count": {
+      "type": "number",
+      "default": 0
+    },
+    "share_count": {
+      "type": "number",
+      "default": 0
+    },
+    "feeling": {
+      "type": "string",
+      "description": "Feeling/activity tag"
+    },
+    "privacy": {
+      "type": "string",
+      "enum": [
+        "public",
+        "friends",
+        "only_me"
+      ],
+      "default": "public"
+    }
+  },
+  "required": [
+    "content",
+    "author_email",
+    "author_name"
+  ]
+}
