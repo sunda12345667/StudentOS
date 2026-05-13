@@ -38,6 +38,7 @@ import AdminWallet from '@/pages/admin/AdminWallet';
 import AdminAnalytics from '@/pages/admin/AdminAnalytics';
 import AdminNotifications from '@/pages/admin/AdminNotifications';
 import AdminSettings from '@/pages/admin/AdminSettings';
+import AdvertiserPortal from '@/pages/advertiser/AdvertiserPortal';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -102,6 +103,9 @@ const AuthenticatedApp = () => {
           <Route path="/admin/settings" element={<AdminSettings />} />
         </Route>
       </Route>
+
+      {/* Advertiser Portal — self-contained with its own auth */}
+      <Route path="/advertiser/*" element={<AdvertiserPortal />} />
 
       <Route path="*" element={<PageNotFound />} />
     </Routes>
