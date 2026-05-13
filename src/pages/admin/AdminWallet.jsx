@@ -72,7 +72,7 @@ export default function AdminWallet() {
   const [txFilter, setTxFilter] = useState('all');
   const [withdrawals, setWithdrawals] = useState(WITHDRAWAL_REQUESTS);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [withdrawForm, setWithdrawForm] = useState({ amount: '', bank: '', account: '', note: '' });
+  const [withdrawForm, setWithdrawForm] = useState({ amount: '', source: 'commission', bank: '', account: '', note: '' });
   const [submitting, setSubmitting] = useState(false);
 
   const handleWithdraw = async () => {
@@ -82,9 +82,10 @@ export default function AdminWallet() {
     }
     setSubmitting(true);
     await new Promise(r => setTimeout(r, 800));
+    const sourceLabels = { commission: 'Commission Pool', ad_revenue: 'Ad Revenue', platform: 'Platform Earnings' };
     const newRequest = {
       id: withdrawals.length + 1,
-      requester: 'Platform Earnings',
+      requester: sourceLabels[withdrawForm.source] || 'Platform Earnings',
       amount: Number(withdrawForm.amount),
       requested: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'pending',
@@ -94,7 +95,7 @@ export default function AdminWallet() {
     setWithdrawals(prev => [newRequest, ...prev]);
     setSubmitting(false);
     setShowWithdrawModal(false);
-    setWithdrawForm({ amount: '', bank: '', account: '', note: '' });
+    setWithdrawForm({ amount: '', source: 'commission', bank: '', account: '', note: '' });
     toast.success('Withdrawal request submitted successfully!');
   };
 
@@ -124,6 +125,29 @@ export default function AdminWallet() {
               </button>
             </div>
             <div className="p-5 space-y-4">
+              <div>
+                <label className="text-white/60 text-xs mb-1.5 block">Withdraw From <span className="text-red-400">*</span></label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'commission', label: 'Commission', color: 'purple', amount: '₦45,600' },
+                    { value: 'ad_revenue', label: 'Ad Revenue', color: 'blue', amount: '₦128,000' },
+                    { value: 'platform',   label: 'Platform',   color: 'green', amount: '₦12,400' },
+                  ].map(s => (
+                    <button
+                      key={s.value}
+                      onClick={() => setWithdrawForm(p => ({ ...p, source: s.value }))}
+                      className={`flex flex-col items-center gap-1 p-3 rounded-xl border text-center transition-all ${
+                        withdrawForm.source === s.value
+                          ? 'border-white/30 bg-white/10'
+                          : 'border-white/8 bg-white/[0.02] hover:bg-white/5'
+                      }`}
+                    >
+                      <span className="text-white text-xs font-bold">{s.label}</span>
+                      <span className="text-white/40 text-[10px]">{s.amount}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label className="text-white/60 text-xs mb-1.5 block">Amount (₦) <span className="text-red-400">*</span></label>
                 <Input
