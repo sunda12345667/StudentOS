@@ -49,7 +49,7 @@ export default function Sidebar({ user, collapsed, onToggle }) {
         </div>
         {!collapsed && (
           <div className="ml-3 overflow-hidden">
-            <span className="font-black text-lg gradient-brand-text tracking-tight">EduVerse</span>
+            <span className="font-black text-lg gradient-brand-text tracking-tight">StudentOS</span>
             <p className="text-[10px] text-muted-foreground -mt-0.5">Learn · Grow · Connect</p>
           </div>
         )}
