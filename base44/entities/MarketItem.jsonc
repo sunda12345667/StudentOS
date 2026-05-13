@@ -27,13 +27,15 @@
       "type": "string",
       "enum": [
         "textbook",
-        "course",
         "notes",
-        "tutoring",
-        "equipment",
-        "digital",
-        "other"
-      ]
+        "past_questions",
+        "materials",
+        "gadgets",
+        "handouts",
+        "course",
+        "tutorial"
+      ],
+      "default": "textbook"
     },
     "condition": {
       "type": "string",
