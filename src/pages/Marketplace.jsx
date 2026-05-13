@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingBag, Search, Plus, Loader2, SlidersHorizontal, TrendingUp, Package } from 'lucide-react';
+import { ShoppingBag, Search, Plus, Loader2, SlidersHorizontal, TrendingUp, Package, ShieldCheck } from 'lucide-react';
 import ItemCard, { CAT_CONFIG } from '@/components/marketplace/ItemCard';
 import ItemDetail from '@/components/marketplace/ItemDetail';
 import CreateListing from '@/components/marketplace/CreateListing';
 import MyListings from '@/components/marketplace/MyListings';
+import OrderManagement from '@/components/marketplace/OrderManagement';
 
 const SORT_OPTIONS = [
   { value: '-created_date', label: 'Newest First' },
@@ -98,6 +99,7 @@ export default function Marketplace() {
         <TabsList className="mb-6">
           <TabsTrigger value="browse" className="gap-1.5"><ShoppingBag className="w-4 h-4" />Browse</TabsTrigger>
           <TabsTrigger value="my-listings" className="gap-1.5"><Package className="w-4 h-4" />My Listings</TabsTrigger>
+          <TabsTrigger value="orders" className="gap-1.5"><ShieldCheck className="w-4 h-4" />Orders</TabsTrigger>
         </TabsList>
 
         <TabsContent value="browse">
@@ -165,6 +167,10 @@ export default function Marketplace() {
 
         <TabsContent value="my-listings">
           <MyListings user={user} />
+        </TabsContent>
+
+        <TabsContent value="orders">
+          <OrderManagement user={user} />
         </TabsContent>
       </Tabs>
 

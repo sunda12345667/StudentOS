@@ -1,0 +1,32 @@
+{
+  "name": "Review",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string"
+    },
+    "reviewer_email": {
+      "type": "string"
+    },
+    "reviewer_name": {
+      "type": "string"
+    },
+    "reviewer_avatar": {
+      "type": "string"
+    },
+    "seller_email": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "number"
+    },
+    "comment": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "item_id",
+    "reviewer_email",
+    "rating"
+  ]
+}

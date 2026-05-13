@@ -1,0 +1,71 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string"
+    },
+    "item_title": {
+      "type": "string"
+    },
+    "item_image": {
+      "type": "string"
+    },
+    "buyer_email": {
+      "type": "string"
+    },
+    "buyer_name": {
+      "type": "string"
+    },
+    "seller_email": {
+      "type": "string"
+    },
+    "seller_name": {
+      "type": "string"
+    },
+    "price": {
+      "type": "number"
+    },
+    "delivery_option": {
+      "type": "string",
+      "enum": [
+        "pickup",
+        "delivery",
+        "digital"
+      ],
+      "default": "pickup"
+    },
+    "delivery_address": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "escrow_held",
+        "shipped",
+        "delivered",
+        "completed",
+        "disputed",
+        "cancelled"
+      ],
+      "default": "pending"
+    },
+    "escrow_released": {
+      "type": "boolean",
+      "default": false
+    },
+    "tracking_info": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "item_id",
+    "buyer_email",
+    "seller_email",
+    "price"
+  ]
+}
