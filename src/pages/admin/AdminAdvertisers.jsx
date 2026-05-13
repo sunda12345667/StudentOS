@@ -4,8 +4,9 @@ import StatCard from '@/components/admin/StatCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Building2, Users, DollarSign, CheckCircle2, ShieldCheck, Ban, Search, Plus, Loader2, Globe, Phone, Mail } from 'lucide-react';
+import { Building2, Users, DollarSign, CheckCircle2, ShieldCheck, Ban, Search, Plus, Loader2, Mail, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import AdvertiserInvoicePanel from '@/components/admin/AdvertiserInvoicePanel';
 
 const DEMO_ADVERTISERS = [
   { id: '1', company_name: 'EduMart Nigeria', contact_name: 'Chijioke Nwachukwu', contact_email: 'chi@edumart.ng', industry: 'education', status: 'verified', total_spent: 32000, total_campaigns: 3, balance: 18000 },
@@ -118,8 +119,21 @@ export default function AdminAdvertisers() {
     a.contact_email.toLowerCase().includes(search.toLowerCase())
   );
 
+  const [sendingAll, setSendingAll] = useState(false);
   const verified = advertisers.filter(a => a.status === 'verified').length;
   const totalSpent = advertisers.reduce((s, a) => s + (a.total_spent || 0), 0);
+
+  const sendAllInvoices = async () => {
+    setSendingAll(true);
+    try {
+      const res = await base44.functions.invoke('generateInvoice', { trigger: 'monthly', tax_rate: 0 });
+      toast.success(`${res.data?.invoices_sent || 0} invoice(s) sent to all verified advertisers!`);
+    } catch (e) {
+      toast.error(`Failed: ${e.message}`);
+    } finally {
+      setSendingAll(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -139,6 +153,10 @@ export default function AdminAdvertisers() {
               <Search className="w-3.5 h-3.5 text-white/40" />
               <input className="bg-transparent text-white text-xs placeholder-white/30 outline-none w-32" placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
+            <Button onClick={sendAllInvoices} disabled={sendingAll} size="sm" className="bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 gap-1.5 text-xs">
+              {sendingAll ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              {sendingAll ? 'Sending...' : 'Send All Invoices'}
+            </Button>
             <Button onClick={() => setAddOpen(true)} size="sm" className="bg-blue-600 hover:bg-blue-700 border-0 gap-1.5 text-xs">
               <Plus className="w-3.5 h-3.5" />Add Advertiser
             </Button>
@@ -187,7 +205,9 @@ export default function AdminAdvertisers() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <AdvertiserInvoicePanel advertiser={adv} />
+
+              <div className="flex gap-2 mt-3">
                 {adv.status === 'pending' && (
                   <Button onClick={() => updateStatus(adv, 'verified')} size="sm" className="flex-1 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border-0 text-xs gap-1">
                     <CheckCircle2 className="w-3 h-3" />Verify

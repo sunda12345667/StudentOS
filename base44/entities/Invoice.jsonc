@@ -1,0 +1,87 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string"
+    },
+    "advertiser_id": {
+      "type": "string"
+    },
+    "advertiser_name": {
+      "type": "string"
+    },
+    "advertiser_email": {
+      "type": "string"
+    },
+    "period_label": {
+      "type": "string"
+    },
+    "trigger": {
+      "type": "string",
+      "enum": [
+        "monthly",
+        "threshold"
+      ],
+      "default": "monthly"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "campaign_name": {
+            "type": "string"
+          },
+          "ad_type": {
+            "type": "string"
+          },
+          "impressions": {
+            "type": "number"
+          },
+          "clicks": {
+            "type": "number"
+          },
+          "amount": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "paid",
+        "overdue"
+      ],
+      "default": "sent"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "advertiser_id",
+    "advertiser_name",
+    "advertiser_email",
+    "total"
+  ]
+}
