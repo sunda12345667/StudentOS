@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Percent, DollarSign, Bell, Shield, Palette, CreditCard, Save, Loader2, Check } from 'lucide-react';
+import { Percent, DollarSign, Bell, Shield, Palette, Save, Loader2, FileText, Send, CalendarDays, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Section = ({ icon: Icon, title, subtitle, children, color = 'blue' }) => {
@@ -58,6 +58,8 @@ export default function AdminSettings() {
   const [newAdAlerts, setNewAdAlerts] = useState(true);
   const [twoFactor, setTwoFactor] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sendingWeekly, setSendingWeekly] = useState(false);
+  const [sendingMonthly, setSendingMonthly] = useState(false);
 
   const save = async () => {
     setSaving(true);
@@ -72,6 +74,19 @@ export default function AdminSettings() {
     }
     setSaving(false);
     toast.success('Settings saved successfully!');
+  };
+
+  const sendReport = async (type) => {
+    const setter = type === 'weekly' ? setSendingWeekly : setSendingMonthly;
+    setter(true);
+    try {
+      await base44.functions.invoke('sendPerformanceReport', { type });
+      toast.success(`${type === 'weekly' ? 'Weekly' : 'Monthly'} report sent to owner email!`);
+    } catch (e) {
+      toast.error(`Failed to send report: ${e.message}`);
+    } finally {
+      setter(false);
+    }
   };
 
   return (
@@ -168,6 +183,35 @@ export default function AdminSettings() {
             <option className="bg-[#0d1220]">GHS (₵)</option>
           </select>
         </Field>
+      </Section>
+
+      {/* Automated Reports */}
+      <Section icon={FileText} title="Performance Reports" subtitle="Automated PDF reports sent to your registered owner email" color="blue">
+        <Field label="Weekly Report" hint="Sent every Monday at 8:00 AM automatically">
+          <Button
+            size="sm"
+            onClick={() => sendReport('weekly')}
+            disabled={sendingWeekly}
+            className="bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 border border-blue-500/30 gap-1.5 text-xs"
+          >
+            {sendingWeekly ? <Loader2 className="w-3 h-3 animate-spin" /> : <CalendarDays className="w-3 h-3" />}
+            {sendingWeekly ? 'Sending...' : 'Send Now'}
+          </Button>
+        </Field>
+        <Field label="Monthly Report" hint="Sent on the 1st of every month at 8:00 AM automatically">
+          <Button
+            size="sm"
+            onClick={() => sendReport('monthly')}
+            disabled={sendingMonthly}
+            className="bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 border border-purple-500/30 gap-1.5 text-xs"
+          >
+            {sendingMonthly ? <Loader2 className="w-3 h-3 animate-spin" /> : <Calendar className="w-3 h-3" />}
+            {sendingMonthly ? 'Sending...' : 'Send Now'}
+          </Button>
+        </Field>
+        <div className="mt-2 p-3 rounded-xl bg-white/3 border border-white/5">
+          <p className="text-white/30 text-xs">📧 Reports are sent to the <span className="text-blue-400/80">OWNER_EMAIL</span> secret. Ensure it matches your registered app user email.</p>
+        </div>
       </Section>
 
       {/* Save */}
