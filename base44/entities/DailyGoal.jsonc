@@ -1,0 +1,49 @@
+{
+  "name": "DailyGoal",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "title": {
+      "type": "string"
+    },
+    "target_value": {
+      "type": "number",
+      "default": 1
+    },
+    "current_value": {
+      "type": "number",
+      "default": 0
+    },
+    "unit": {
+      "type": "string",
+      "default": "tasks"
+    },
+    "completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "study",
+        "reading",
+        "practice",
+        "revision",
+        "exercise",
+        "other"
+      ],
+      "default": "study"
+    }
+  },
+  "required": [
+    "user_email",
+    "date",
+    "title"
+  ]
+}

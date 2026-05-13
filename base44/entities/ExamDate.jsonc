@@ -1,0 +1,42 @@
+{
+  "name": "ExamDate",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "exam_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "exam_time": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "default": "medium"
+    }
+  },
+  "required": [
+    "user_email",
+    "subject",
+    "exam_date"
+  ]
+}

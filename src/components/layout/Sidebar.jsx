@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, BookOpen, Users, ShoppingBag, Bot, Bell,
   MessageCircle, School, Trophy, ChevronLeft, ChevronRight,
-  GraduationCap, Sparkles, Settings, LogOut, Play, ShieldCheck
+  GraduationCap, Sparkles, Settings, LogOut, Play, ShieldCheck, CalendarDays
 } from 'lucide-react';
 
 const NAV = [
@@ -22,6 +22,7 @@ const NAV = [
   { icon: Trophy,      label: 'Leaderboard', path: '/leaderboard',color: 'text-yellow-500' },
   { icon: Play,        label: 'Reels',       path: '/reels',      color: 'text-rose-500' },
   { icon: GraduationCap, label: 'Campus',    path: '/campus',     color: 'text-indigo-500' },
+  { icon: CalendarDays,  label: 'Planner',   path: '/planner',    color: 'text-violet-500' },
 ];
 
 export default function Sidebar({ user, collapsed, onToggle }) {
