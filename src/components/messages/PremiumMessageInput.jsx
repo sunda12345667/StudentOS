@@ -7,12 +7,21 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef(null);
 
-  // Auto-resize textarea
+  // Auto-resize textarea (preserve cursor position)
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px';
-    }
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    // Save cursor position
+    const cursorStart = textarea.selectionStart;
+    const cursorEnd = textarea.selectionEnd;
+    
+    // Resize
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    
+    // Restore cursor position
+    textarea.setSelectionRange(cursorStart, cursorEnd);
   }, [value]);
 
   return (
