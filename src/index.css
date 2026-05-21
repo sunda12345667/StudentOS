@@ -127,3 +127,22 @@
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* Hide scrollbar — mobile carousels */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Smooth momentum scroll on iOS */
+.scroll-smooth-ios {
+  -webkit-overflow-scrolling: touch;
+  overflow-y: scroll;
+}
+
+/* Prevent text selection on tap (native feel) */
+.select-none { -webkit-user-select: none; user-select: none; }
+
+/* Native tap highlight removal */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Framer Motion page transitions root */
+#root { overflow-x: hidden; }
