@@ -39,7 +39,7 @@ function OrderCard({ order, isBuyer, onAction }) {
             <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(order.created_date), { addSuffix: true })}</p>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="font-black text-primary">${Number(order.price).toFixed(2)}</p>
+            <p className="font-black text-primary">₦{Number(order.price).toLocaleString()}</p>
             <Badge className={`${stCfg.color} border-0 text-[10px] gap-0.5 mt-1`}><Icon className="w-2.5 h-2.5" />{stCfg.label}</Badge>
           </div>
         </div>

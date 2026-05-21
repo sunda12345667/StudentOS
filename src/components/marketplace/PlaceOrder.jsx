@@ -79,7 +79,7 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
                 <p className="font-semibold text-sm truncate">{item.title}</p>
                 <p className="text-xs text-muted-foreground">{item.seller_name}</p>
               </div>
-              <p className="font-black text-primary text-lg">${Number(item.price).toFixed(2)}</p>
+              <p className="font-black text-primary text-lg">₦{Number(item.price).toLocaleString()}</p>
             </div>
 
             <div>
