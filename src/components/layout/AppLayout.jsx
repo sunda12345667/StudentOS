@@ -71,7 +71,7 @@ export default function AppLayout() {
 
       {/* Main content */}
       <main
-        className="transition-all duration-300"
+        className="transition-all duration-300 overflow-y-auto"
         style={{
           paddingTop: isMobile ? 56 : 64,
           paddingLeft: sidebarWidth,
