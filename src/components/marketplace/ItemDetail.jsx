@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CAT_CONFIG, COND_COLORS } from './ItemCard';
-import { MessageCircle, Eye, Share2, CheckCircle2, Loader2, ShieldCheck, Star, ShoppingCart, Truck } from 'lucide-react';
+import { MessageCircle, Eye, Share2, CheckCircle2, Loader2, ShieldCheck, Star, ShoppingCart, Truck, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import ItemReviews from './ItemReviews';
@@ -83,7 +83,7 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
             {/* Price row */}
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-4xl font-black text-primary">${Number(item.price).toFixed(2)}</p>
+                <p className="text-4xl font-black text-primary">₦{Number(item.price).toLocaleString()}</p>
                 {item.price == 0 && <p className="text-xs text-green-600 font-medium">FREE</p>}
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -171,6 +171,13 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
               </div>
             )}
 
+            {isOwn && item.is_digital && item.file_url && (
+              <a href={item.file_url} target="_blank" rel="noopener noreferrer">
+                <Button className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700 border-0 text-white h-11">
+                  <Download className="w-4 h-4" />Download Your Material File
+                </Button>
+              </a>
+            )}
             {isOwn && (
               <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-sm text-center text-primary font-medium">
                 This is your listing

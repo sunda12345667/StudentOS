@@ -14,6 +14,10 @@
     "image_url": {
       "type": "string"
     },
+    "file_url": {
+      "type": "string",
+      "description": "Downloadable file for digital products"
+    },
     "seller_email": {
       "type": "string"
     },

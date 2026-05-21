@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CAT_CONFIG } from './ItemCard';
-import { Loader2, ImagePlus, X, Tag } from 'lucide-react';
+import { Loader2, X, Tag, Upload, FileText } from 'lucide-react';
 
 const CONDITIONS = [
   { value: 'new', label: '✨ New' },
@@ -20,6 +20,7 @@ export default function CreateListing({ open, onClose, user, onCreated }) {
   const [form, setForm] = useState({ title: '', description: '', price: '', category: 'textbook', condition: 'good', subject: '', grade_level: '', is_digital: false });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [materialFile, setMaterialFile] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const setField = (k, v) => setForm(p => ({ ...p, [k]: v }));
@@ -33,20 +34,26 @@ export default function CreateListing({ open, onClose, user, onCreated }) {
 
   const handleCreate = async () => {
     if (!form.title.trim() || !form.price) return;
+    if (form.is_digital && !materialFile) { return; }
     setSaving(true);
     let image_url = '';
+    let file_url = '';
     if (imageFile) {
       const r = await base44.integrations.Core.UploadFile({ file: imageFile });
       image_url = r.file_url;
     }
+    if (materialFile) {
+      const r = await base44.integrations.Core.UploadFile({ file: materialFile });
+      file_url = r.file_url;
+    }
     await base44.entities.MarketItem.create({
-      ...form, price: Number(form.price), image_url,
+      ...form, price: Number(form.price), image_url, file_url,
       seller_email: user.email, seller_name: user.full_name,
       seller_avatar: user.avatar_url || '', status: 'available', views: 0,
     });
     setSaving(false);
     setForm({ title: '', description: '', price: '', category: 'textbook', condition: 'good', subject: '', grade_level: '', is_digital: false });
-    setImageFile(null); setImagePreview(null);
+    setImageFile(null); setImagePreview(null); setMaterialFile(null);
     onCreated?.();
     onClose();
   };
@@ -94,7 +101,7 @@ export default function CreateListing({ open, onClose, user, onCreated }) {
                 </SelectContent>
               </Select>
             </div>
-            <div><Label>Price ($)</Label><Input type="number" min="0" step="0.01" value={form.price} onChange={e => setField('price', e.target.value)} placeholder="0.00" /></div>
+            <div><Label>Price (₦)</Label><Input type="number" min="0" step="1" value={form.price} onChange={e => setField('price', e.target.value)} placeholder="0" /></div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -123,7 +130,40 @@ export default function CreateListing({ open, onClose, user, onCreated }) {
             </label>
           </div>
 
-          <Button onClick={handleCreate} disabled={saving || !form.title.trim() || !form.price} className="w-full gradient-brand border-0 h-11 gap-2">
+          {/* Material file upload for digital items */}
+          {form.is_digital && (
+            <div>
+              <Label className="mb-2 block">Upload Material File <span className="text-destructive">*</span></Label>
+              <label className="cursor-pointer block">
+                <input type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.zip,.mp4,.mp3,.png,.jpg,.jpeg" className="hidden"
+                  onChange={e => setMaterialFile(e.target.files[0])} />
+                <div className={`flex items-center gap-3 p-4 rounded-xl border-2 border-dashed transition-colors ${materialFile ? 'border-primary/60 bg-primary/5' : 'border-border hover:border-primary/40'}`}>
+                  {materialFile ? (
+                    <>
+                      <FileText className="w-5 h-5 text-primary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{materialFile.name}</p>
+                        <p className="text-xs text-muted-foreground">{(materialFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                      </div>
+                      <button type="button" onClick={e => { e.preventDefault(); setMaterialFile(null); }} className="text-muted-foreground hover:text-destructive">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium">Click to upload your material</p>
+                        <p className="text-xs text-muted-foreground">PDF, Word, PPT, ZIP, MP4, MP3 accepted</p>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </label>
+            </div>
+          )}
+
+          <Button onClick={handleCreate} disabled={saving || !form.title.trim() || !form.price || (form.is_digital && !materialFile)} className="w-full gradient-brand border-0 h-11 gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
             {saving ? 'Listing...' : 'List for Sale'}
           </Button>

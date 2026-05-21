@@ -93,8 +93,8 @@ const AuthenticatedApp = () => {
         </Route>
       </Route>
 
-      {/* Admin routes — admin only */}
-      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+      {/* Admin routes — admin role only */}
+      <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} adminOnly />}>
         <Route element={<AdminLayout user={user} />}>
           <Route path="/admin" element={<AdminOverview />} />
           <Route path="/admin/commission" element={<AdminCommission />} />
