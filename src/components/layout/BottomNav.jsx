@@ -3,15 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, BookOpen, Bot, ShoppingBag, Users, Bell } from 'lucide-react';
+import { Home, Play, Bot, ShoppingBag, MessageCircle, User } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { icon: Home,       label: 'Home',       path: '/' },
-  { icon: BookOpen,   label: 'Learn',      path: '/classroom' },
-  { icon: Bot,        label: 'AI',         path: '/ai-tutor', highlight: true },
-  { icon: ShoppingBag,label: 'Market',     path: '/marketplace' },
-  { icon: Users,      label: 'Community',  path: '/communities' },
-  { icon: Bell,       label: 'Alerts',     path: '/notifications', badge: true },
+  { icon: Home,         label: 'Home',      path: '/' },
+  { icon: Play,         label: 'Reels',     path: '/reels' },
+  { icon: Bot,          label: 'AI',        path: '/ai-tutor', highlight: true },
+  { icon: ShoppingBag,  label: 'Market',    path: '/marketplace' },
+  { icon: MessageCircle,label: 'Messages',  path: '/messages', badge: true },
 ];
 
 export default function BottomNav({ user }) {
@@ -19,10 +18,18 @@ export default function BottomNav({ user }) {
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
-    if (user?.email) {
-      base44.entities.Notification.filter({ user_email: user.email, is_read: false })
-        .then(n => setUnread(n.length)).catch(() => {});
-    }
+    if (!user?.email) return;
+    // Count unread message notifications
+    base44.entities.Notification.filter({ user_email: user.email, type: 'message', is_read: false })
+      .then(n => setUnread(n.length)).catch(() => {});
+
+    // Also subscribe to new notifications in real-time
+    const unsub = base44.entities.Notification.subscribe((event) => {
+      if (event.type === 'create' && event.data?.user_email === user.email && event.data?.type === 'message') {
+        setUnread(prev => prev + 1);
+      }
+    });
+    return unsub;
   }, [user?.email, location.pathname]);
 
   return (

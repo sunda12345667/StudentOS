@@ -58,23 +58,22 @@ export default function ItemCard({ item, index, onClick }) {
           )}
         </div>
 
-        <div className="p-3">
-          <h3 className="font-bold text-sm line-clamp-2 leading-tight mb-1">{item.title}</h3>
-          {item.subject && <p className="text-[11px] text-muted-foreground">{item.subject} {item.grade_level ? `· ${item.grade_level}` : ''}</p>}
+        <div className="p-2.5 sm:p-3">
+          <h3 className="font-bold text-xs sm:text-sm line-clamp-2 leading-tight mb-1">{item.title}</h3>
+          {item.subject && <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate">{item.subject}</p>}
 
-          <div className="flex items-center gap-2 mt-2">
+          <div className="hidden sm:flex items-center gap-2 mt-2">
             <Avatar className="h-5 w-5 flex-shrink-0">
               <AvatarImage src={item.seller_avatar} />
               <AvatarFallback className="gradient-brand text-white text-[9px]">{si}</AvatarFallback>
             </Avatar>
             <span className="text-[11px] text-muted-foreground truncate">{item.seller_name}</span>
-            <span className="text-[10px] text-muted-foreground ml-auto">{formatDistanceToNow(new Date(item.created_date), { addSuffix: true })}</span>
           </div>
 
-          <div className="flex items-center justify-between mt-3">
-            <span className="text-xl font-black text-primary">${Number(item.price).toFixed(2)}</span>
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              <Eye className="w-3.5 h-3.5" />{item.views || 0}
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-base sm:text-xl font-black text-primary">₦{Number(item.price).toLocaleString()}</span>
+            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              <Eye className="w-3 h-3" />{item.views || 0}
             </div>
           </div>
         </div>

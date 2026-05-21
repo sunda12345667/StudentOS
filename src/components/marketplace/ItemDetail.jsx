@@ -53,7 +53,7 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
   return (
     <>
       <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-black line-clamp-2 pr-6">{item.title}</DialogTitle>
           </DialogHeader>

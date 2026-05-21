@@ -47,11 +47,12 @@ export default function AppLayout() {
 
       {/* Main content */}
       <main
-        className="min-h-screen transition-all duration-300"
+        className="transition-all duration-300"
         style={{
           paddingTop: isMobile ? 56 : 64,
           paddingLeft: sidebarWidth,
           paddingBottom: isMobile ? 96 : 0,
+          minHeight: '100dvh',
         }}
       >
         <Outlet context={{ user: enrichedUser, profile, refreshProfile: () => {} }} />

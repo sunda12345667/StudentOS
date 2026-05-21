@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { ThumbsUp, MessageCircle, BookOpen, Trophy, Bell, CheckCheck, Loader2, Zap } from 'lucide-react';
+import { ThumbsUp, MessageCircle, BookOpen, Trophy, Bell, CheckCheck, Loader2, Zap, UserPlus, Share2, ShoppingBag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -19,10 +19,14 @@ const TYPE_CONFIG = {
   announcement: { icon: Bell, color: 'bg-rose-100 text-rose-600' },
   message: { icon: MessageCircle, color: 'bg-cyan-100 text-cyan-600' },
   achievement: { icon: Zap, color: 'bg-yellow-100 text-yellow-600' },
+  follow: { icon: UserPlus, color: 'bg-violet-100 text-violet-600' },
+  share: { icon: Share2, color: 'bg-pink-100 text-pink-600' },
+  marketplace: { icon: ShoppingBag, color: 'bg-orange-100 text-orange-600' },
 };
 
 export default function Notifications() {
   const { user } = useOutletContext();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +34,14 @@ export default function Notifications() {
     if (!user?.email) return;
     base44.entities.Notification.filter({ user_email: user.email }, '-created_date', 50)
       .then(setNotifications).finally(() => setLoading(false));
+
+    // Real-time subscription
+    const unsub = base44.entities.Notification.subscribe((event) => {
+      if (event.type === 'create' && event.data?.user_email === user.email) {
+        setNotifications(prev => [event.data, ...prev]);
+      }
+    });
+    return unsub;
   }, [user?.email]);
 
   const markAll = async () => {
@@ -39,9 +51,14 @@ export default function Notifications() {
   };
 
   const markOne = async (n) => {
-    if (n.is_read) return;
-    await base44.entities.Notification.update(n.id, { is_read: true });
-    setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    if (!n.is_read) {
+      await base44.entities.Notification.update(n.id, { is_read: true });
+      setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+    }
+    // Navigate for message notifications
+    if (n.type === 'message' && n.entity_id) {
+      navigate('/messages', { state: { conversationId: n.entity_id } });
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.is_read).length;

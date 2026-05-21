@@ -5,6 +5,9 @@
     "post_id": {
       "type": "string"
     },
+    "reel_id": {
+      "type": "string"
+    },
     "content": {
       "type": "string"
     },
@@ -15,6 +18,9 @@
       "type": "string"
     },
     "author_avatar": {
+      "type": "string"
+    },
+    "parent_comment_id": {
       "type": "string"
     },
     "likes": {
@@ -29,7 +35,6 @@
     }
   },
   "required": [
-    "post_id",
     "content",
     "author_email",
     "author_name"

@@ -11,6 +11,9 @@
     "from_avatar": {
       "type": "string"
     },
+    "from_email": {
+      "type": "string"
+    },
     "type": {
       "type": "string",
       "enum": [
@@ -21,13 +24,22 @@
         "enrollment",
         "announcement",
         "message",
-        "achievement"
+        "achievement",
+        "follow",
+        "share",
+        "marketplace"
       ]
     },
     "content": {
       "type": "string"
     },
     "link": {
+      "type": "string"
+    },
+    "entity_type": {
+      "type": "string"
+    },
+    "entity_id": {
       "type": "string"
     },
     "is_read": {
