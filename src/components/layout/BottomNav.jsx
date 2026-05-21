@@ -16,6 +16,7 @@ const NAV_ITEMS = [
 export default function BottomNav({ user, hidden = false }) {
   const location = useLocation();
   const [unread, setUnread] = useState(0);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -32,12 +33,26 @@ export default function BottomNav({ user, hidden = false }) {
     return unsub;
   }, [user?.email, location.pathname]);
 
+  // Detect keyboard open/close
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const handleResize = () => {
+      const isOpen = vv.height < window.innerHeight - 100;
+      setKeyboardOpen(isOpen);
+    };
+
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center transition-transform duration-200"
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-center transition-transform duration-200 md:block"
       style={{
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        transform: hidden ? 'translateY(120%)' : 'translateY(0)',
+        transform: hidden || keyboardOpen ? 'translateY(120%)' : 'translateY(0)',
       }}
     >
       {/* Glass container */}
@@ -50,7 +65,7 @@ export default function BottomNav({ user, hidden = false }) {
           border: '1px solid rgba(255,255,255,0.12)',
         }}
       >
-        <div className="flex items-stretch h-[62px]">
+        <div className="flex items-stretch h-14">
           {NAV_ITEMS.map(item => {
             const active = item.path === '/'
               ? location.pathname === '/'

@@ -4,11 +4,14 @@ import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Send, MessageCircle, Loader2, X, Plus, Hash, ArrowLeft } from 'lucide-react';
+import { Search, MessageCircle, Loader2, X, Plus, Hash, ArrowLeft } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import RoomList from '@/components/messages/RoomList';
 import RoomChatWindow from '@/components/messages/RoomChatWindow';
+import PremiumChatHeader from '@/components/messages/PremiumChatHeader';
+import PremiumMessageInput from '@/components/messages/PremiumMessageInput';
+import EmptyChatState from '@/components/messages/EmptyChatState';
 import { toast } from 'sonner';
 
 const TABS = [
@@ -355,38 +358,16 @@ export default function Messages() {
     }
     const other = getOther(selected);
     return (
-      <div className="flex flex-col" style={{ height: '100%' }}>
-        {/* Chat header */}
-        <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
-          <button
-            onClick={goBack}
-            className="md:hidden p-1.5 -ml-1.5 rounded-lg hover:bg-muted text-muted-foreground"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div className="relative">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={other.avatar} />
-              <AvatarFallback className="gradient-brand text-white text-xs">{other.initials}</AvatarFallback>
-            </Avatar>
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-card" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <Link to={`/profile/${other.email}`} className="font-semibold text-sm hover:underline block truncate">{other.name}</Link>
-            <p className="text-xs text-green-500">Active now</p>
-          </div>
-        </div>
+      <div className="flex flex-col h-full">
+        {/* Premium header */}
+        <PremiumChatHeader user={user} other={other} onBack={goBack} />
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 scroll-smooth">
+        {/* Messages with gradient background */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth relative">
           {msgsLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <MessageCircle className="w-12 h-12 opacity-20 mb-3" />
-              <p className="text-sm font-medium">No messages yet</p>
-              <p className="text-xs mt-1">Say hi to {other.name.split(' ')[0]}!</p>
-            </div>
+            <EmptyChatState name={other.name} />
           ) : (
             <>
               {messages.map(msg => {
@@ -402,7 +383,7 @@ export default function Messages() {
                     )}
                     <div className={cn(
                       "max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
-                      isMine ? "gradient-brand text-white rounded-br-sm" : "bg-muted rounded-bl-sm"
+                      isMine ? "gradient-brand text-white rounded-br-sm shadow-lg shadow-primary/20" : "bg-muted rounded-bl-sm"
                     )}>
                       {msg.content}
                     </div>
@@ -414,25 +395,14 @@ export default function Messages() {
           )}
         </div>
 
-        {/* Input */}
-        <div
-          className="flex-shrink-0 border-t border-border bg-card"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
-        >
-          <form onSubmit={sendDM} className="flex items-center gap-2 p-3">
-            <Input
-              ref={inputRef}
-              value={text}
-              onChange={e => setText(e.target.value)}
-              placeholder="Message..."
-              className="flex-1 bg-muted border-0 rounded-full text-sm h-10"
-              disabled={sending}
-            />
-            <Button type="submit" size="icon" className="gradient-brand border-0 rounded-full h-10 w-10 flex-shrink-0" disabled={!text.trim() || sending}>
-              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </Button>
-          </form>
-        </div>
+        {/* Premium input */}
+        <PremiumMessageInput
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onSubmit={sendDM}
+          disabled={sending}
+          inputRef={inputRef}
+        />
       </div>
     );
   };
