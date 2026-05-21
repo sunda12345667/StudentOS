@@ -5,6 +5,9 @@
     "user_email": {
       "type": "string"
     },
+    "username": {
+      "type": "string"
+    },
     "role": {
       "type": "string",
       "enum": [
@@ -30,8 +33,29 @@
     "school_name": {
       "type": "string"
     },
+    "department": {
+      "type": "string"
+    },
     "grade_level": {
       "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "interests": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "subjects": {
       "type": "array",
@@ -61,11 +85,27 @@
       "type": "number",
       "default": 0
     },
-    "location": {
-      "type": "string"
+    "social_links": {
+      "type": "object",
+      "properties": {
+        "twitter": {
+          "type": "string"
+        },
+        "instagram": {
+          "type": "string"
+        },
+        "linkedin": {
+          "type": "string"
+        }
+      }
     },
-    "website": {
-      "type": "string"
+    "privacy_public": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_email": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

@@ -30,6 +30,7 @@ import Reels from '@/pages/Reels';
 import CampusGroups from '@/pages/CampusGroups';
 import CampusGroupDetail from '@/pages/CampusGroupDetail';
 import Planner from '@/pages/Planner';
+import Settings from '@/pages/Settings';
 
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminOverview from '@/pages/admin/AdminOverview';
@@ -90,6 +91,7 @@ const AuthenticatedApp = () => {
           <Route path="/campus" element={<CampusGroups />} />
           <Route path="/campus/:id" element={<CampusGroupDetail />} />
           <Route path="/planner" element={<Planner />} />
+          <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
 

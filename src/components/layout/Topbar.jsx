@@ -81,8 +81,8 @@ export default function Topbar({ user, sidebarCollapsed, isMobile }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/settings" className="cursor-pointer">
-                <Settings className="w-4 h-4 mr-2" />Settings
+              <Link to="/settings" className="cursor-pointer gap-2">
+                <Settings className="w-4 h-4" />Settings
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

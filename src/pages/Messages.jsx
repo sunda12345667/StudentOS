@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Send, MessageCircle, Loader2, PenSquare, Hash, Users } from 'lucide-react';
+import { Search, Send, MessageCircle, Loader2, PenSquare, Hash, Users, X, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import RoomList from '@/components/messages/RoomList';
@@ -30,6 +30,12 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [msgsLoading, setMsgsLoading] = useState(false);
   const bottomRef = useRef(null);
+
+  // New chat search
+  const [search, setSearch] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   // Rooms state
   const [rooms, setRooms] = useState([]);
@@ -102,6 +108,37 @@ export default function Messages() {
     });
   };
 
+  // Search for users to start a chat
+  const searchUsers = async (q) => {
+    setSearch(q);
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    const all = await base44.entities.User.list('-created_date', 100);
+    const filtered = all.filter(u => u.email !== user?.email &&
+      (u.full_name?.toLowerCase().includes(q.toLowerCase()) || u.email?.toLowerCase().includes(q.toLowerCase()))
+    );
+    setSearchResults(filtered.slice(0, 8));
+    setSearching(false);
+  };
+
+  const startChat = async (targetUser) => {
+    // Find existing conversation
+    const existing = conversations.find(c =>
+      c.participants?.includes(user.email) && c.participants?.includes(targetUser.email)
+    );
+    if (existing) { handleSelectConv(existing); setShowSearch(false); setSearch(''); setSearchResults([]); return; }
+    // Create new conversation
+    const conv = await base44.entities.Conversation.create({
+      participants: [user.email, targetUser.email],
+      participant_names: [user.full_name, targetUser.full_name],
+      participant_avatars: [user.avatar_url || '', targetUser.avatar || ''],
+      last_message: '', last_message_time: new Date().toISOString(), last_sender: user.email,
+    });
+    setConversations(p => [conv, ...p]);
+    handleSelectConv(conv);
+    setShowSearch(false); setSearch(''); setSearchResults([]);
+  };
+
   const getOther = (conv) => {
     const idx = conv.participants?.indexOf(user?.email) === 0 ? 1 : 0;
     return {
@@ -125,8 +162,51 @@ export default function Messages() {
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-black">Messages</h2>
-              <PenSquare className="w-5 h-5 text-muted-foreground cursor-pointer hover:text-primary transition-colors" />
+              <button
+                onClick={() => setShowSearch(s => !s)}
+                className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+              >
+                {showSearch ? <X className="w-4 h-4 text-primary" /> : <Plus className="w-4 h-4 text-primary" />}
+              </button>
             </div>
+
+            {/* New chat search */}
+            {showSearch && (
+              <div className="mb-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <Input
+                    autoFocus
+                    placeholder="Search students by name..."
+                    value={search}
+                    onChange={e => searchUsers(e.target.value)}
+                    className="pl-8 bg-muted border-0 rounded-full h-9 text-xs"
+                  />
+                </div>
+                {(searching || searchResults.length > 0) && (
+                  <div className="mt-1.5 bg-card border border-border rounded-xl overflow-hidden shadow-lg">
+                    {searching ? (
+                      <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+                    ) : searchResults.map(u => {
+                      const si = u.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                      return (
+                        <button key={u.id} onClick={() => startChat(u)}
+                          className="w-full flex items-center gap-2.5 p-3 hover:bg-muted transition-colors text-left">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={u.avatar} />
+                            <AvatarFallback className="gradient-brand text-white text-xs">{si}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{u.full_name}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Tabs */}
             <div className="flex bg-muted rounded-xl p-1 gap-1">
               {TABS.map(t => (

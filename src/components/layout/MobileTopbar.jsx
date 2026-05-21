@@ -110,6 +110,11 @@ export default function MobileTopbar({ user }) {
                       <Wallet className="w-4 h-4" />Wallet
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings" className="cursor-pointer gap-2.5">
+                      <Settings className="w-4 h-4" />Settings
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive cursor-pointer gap-2.5"
