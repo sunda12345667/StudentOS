@@ -48,7 +48,7 @@ export default function Feed() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
       {/* Left – Quick Links */}
       <div className="hidden lg:block space-y-4">
         <Card className="p-4">
@@ -87,7 +87,7 @@ export default function Feed() {
       </div>
 
       {/* Center – Feed */}
-      <div className="lg:col-span-2 space-y-4">
+      <div className="lg:col-span-2 space-y-3 sm:space-y-4">
         {/* Stories */}
         {user && (
           <Card className="p-4">

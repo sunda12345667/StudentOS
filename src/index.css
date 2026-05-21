@@ -122,3 +122,8 @@
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.3);
 }
+
+/* Safe area for notched/home-bar devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
