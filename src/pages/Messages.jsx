@@ -366,7 +366,7 @@ export default function Messages() {
     }
     const other = getOther(selected);
     return (
-      <div className="flex flex-col h-full">
+      <div className="flex flex-col" style={{ height: '100%' }}>
         {/* Chat header */}
         <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
           <button
@@ -462,11 +462,11 @@ export default function Messages() {
             <ListPanel />
           </div>
         ) : tab === 'direct' ? (
-          <div className="flex-1 flex flex-col overflow-hidden bg-card">
+          <div className="flex-1 flex flex-col bg-card" style={{ height: '100%' }}>
             <DirectChatPanel />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col overflow-hidden bg-card">
+          <div className="flex-1 flex flex-col bg-card" style={{ height: '100%' }}>
             <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border">
               <button onClick={goBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted text-muted-foreground">
                 <ArrowLeft className="w-5 h-5" />
