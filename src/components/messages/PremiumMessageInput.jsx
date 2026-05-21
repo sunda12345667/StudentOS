@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Plus, Smile, Mic, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -6,11 +6,12 @@ import { cn } from '@/lib/utils';
 export default function PremiumMessageInput({ value, onChange, onSubmit, disabled, inputRef }) {
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef(null);
+  const hasMessage = useMemo(() => value.trim().length > 0, [value]);
 
-  // Auto-resize textarea (preserve cursor position)
+  // Auto-resize textarea (preserve cursor position) - only run when value length changes significantly
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    if (!textarea || !isFocused) return;
     
     // Save cursor position
     const cursorStart = textarea.selectionStart;
@@ -18,11 +19,24 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
     
     // Resize
     textarea.style.height = 'auto';
-    textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    const newHeight = Math.min(textarea.scrollHeight, 100);
+    if (newHeight !== textarea.offsetHeight) {
+      textarea.style.height = newHeight + 'px';
+    }
     
     // Restore cursor position
-    textarea.setSelectionRange(cursorStart, cursorEnd);
-  }, [value]);
+    requestAnimationFrame(() => {
+      textarea.setSelectionRange(cursorStart, cursorEnd);
+    });
+  }, [value.length, isFocused]);
+
+  const handleFocus = useCallback(() => setIsFocused(true), []);
+  const handleBlur = useCallback(() => setIsFocused(false), []);
+
+  const handleTextareaRef = useCallback((r) => {
+    textareaRef.current = r;
+    if (inputRef) inputRef.current = r;
+  }, [inputRef]);
 
   return (
     <div
@@ -53,14 +67,11 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
           )}
         >
           <textarea
-            ref={(r) => {
-              textareaRef.current = r;
-              if (inputRef) inputRef.current = r;
-            }}
+            ref={handleTextareaRef}
             value={value}
             onChange={onChange}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             placeholder="Message..."
             disabled={disabled}
             className={cn(
@@ -84,7 +95,7 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
         </Button>
 
         {/* Voice/Send button */}
-        {value.trim() ? (
+        {hasMessage ? (
           <Button
             type="submit"
             size="icon"
@@ -92,7 +103,7 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
               'h-9 w-9 gradient-brand flex-shrink-0 transition-all duration-200',
               'hover:shadow-lg hover:shadow-primary/20 active:scale-95'
             )}
-            disabled={!value.trim() || disabled}
+            disabled={!hasMessage || disabled}
           >
             {disabled ? (
               <Loader2 className="w-4 h-4 animate-spin" />

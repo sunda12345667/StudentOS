@@ -370,22 +370,36 @@ export default function Messages() {
             <EmptyChatState name={other.name} />
           ) : (
             <>
-              {messages.map(msg => {
+              {messages.map((msg, index) => {
                 const isMine = msg.sender_email === user?.email;
                 const si = msg.sender_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+                const showAvatar = index === 0 || messages[index - 1]?.sender_email !== msg.sender_email;
+                const timeLabel = new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
                 return (
-                  <div key={msg.id} className={`flex gap-2 items-end ${isMine ? 'justify-end' : 'justify-start'}`}>
-                    {!isMine && (
-                      <Avatar className="h-7 w-7 flex-shrink-0 mb-1">
+                  <div key={msg.id} className={`flex gap-1.5 items-end ${isMine ? 'justify-end' : 'justify-start'}`}>
+                    {!isMine && showAvatar && (
+                      <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
                         <AvatarImage src={msg.sender_avatar} />
                         <AvatarFallback className="gradient-brand text-white text-[10px]">{si}</AvatarFallback>
                       </Avatar>
                     )}
-                    <div className={cn(
-                      "max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed break-words",
-                      isMine ? "gradient-brand text-white rounded-br-sm shadow-lg shadow-primary/20" : "bg-muted rounded-bl-sm"
-                    )}>
-                      {msg.content}
+                    {!isMine && !showAvatar && <div className="w-7" />}
+                    <div className="flex flex-col max-w-[75%]">
+                      <div className={cn(
+                        "px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words",
+                        isMine 
+                          ? "gradient-brand text-white rounded-br-sm shadow-md shadow-primary/15" 
+                          : "bg-muted rounded-bl-sm border border-border/30"
+                      )}>
+                        {msg.content}
+                      </div>
+                      <span className={cn(
+                        "text-[10px] mt-0.5 px-1",
+                        isMine ? "text-right text-muted-foreground/60" : "text-muted-foreground/60"
+                      )}>
+                        {timeLabel}
+                      </span>
                     </div>
                   </div>
                 );

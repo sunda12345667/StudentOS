@@ -51,21 +51,21 @@ export default function BottomNav({ user, hidden = false }) {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 flex items-center transition-transform duration-200 md:block"
       style={{
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)',
         transform: hidden || keyboardOpen ? 'translateY(120%)' : 'translateY(0)',
       }}
     >
       {/* Glass container */}
-      <div className="w-full mx-3 mb-3 rounded-2xl overflow-hidden"
+      <div className="w-full mx-2 mb-0 rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(var(--card-rgb, 255 255 255) / 0.85)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.18), 0 1px 0 rgba(255,255,255,0.15) inset',
-          border: '1px solid rgba(255,255,255,0.12)',
+          background: 'rgba(var(--card-rgb, 255 255 255) / 0.9)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.1) inset',
+          border: '1px solid rgba(255,255,255,0.08)',
         }}
       >
-        <div className="flex items-stretch h-14">
+        <div className="flex items-stretch h-12">
           {NAV_ITEMS.map(item => {
             const active = item.path === '/'
               ? location.pathname === '/'
@@ -92,22 +92,22 @@ export default function BottomNav({ user, hidden = false }) {
                 {/* AI highlight pill */}
                 {item.highlight ? (
                   <div className={cn(
-                    'relative w-11 h-11 rounded-2xl gradient-brand flex items-center justify-center shadow-lg shadow-primary/40',
-                    'mb-0.5 -mt-5',
-                    active && 'ring-2 ring-white/30 ring-offset-1 ring-offset-transparent'
+                    'relative w-9 h-9 rounded-xl gradient-brand flex items-center justify-center shadow-md shadow-primary/30',
+                    'mb-0.5 -mt-4',
+                    active && 'ring-2 ring-white/20 ring-offset-1 ring-offset-transparent'
                   )}>
-                    <item.icon className="w-5 h-5 text-white" />
+                    <item.icon className="w-4 h-4 text-white" />
                     {/* Glow */}
-                    <div className="absolute inset-0 rounded-2xl gradient-brand opacity-50 blur-md -z-10" />
+                    <div className="absolute inset-0 rounded-xl gradient-brand opacity-40 blur-sm -z-10" />
                   </div>
                 ) : (
                   <div className="relative z-10">
                     <item.icon className={cn(
-                      'w-5 h-5 transition-all duration-200',
+                      'w-4 h-4 transition-all duration-200',
                       active ? 'text-primary stroke-[2.5]' : 'text-muted-foreground'
                     )} />
                     {item.badge && unread > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-0.5 bg-destructive rounded-full text-[9px] text-white flex items-center justify-center font-bold leading-none">
+                      <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 bg-destructive rounded-full text-[8px] text-white flex items-center justify-center font-bold leading-none">
                         {unread > 9 ? '9+' : unread}
                       </span>
                     )}
@@ -116,7 +116,7 @@ export default function BottomNav({ user, hidden = false }) {
 
                 {!item.highlight && (
                   <span className={cn(
-                    'text-[10px] font-medium transition-colors relative z-10',
+                    'text-[9px] font-medium transition-colors relative z-10',
                     active ? 'text-primary font-semibold' : 'text-muted-foreground'
                   )}>
                     {item.label}
@@ -124,7 +124,7 @@ export default function BottomNav({ user, hidden = false }) {
                 )}
                 {item.highlight && (
                   <span className={cn(
-                    'text-[10px] font-semibold',
+                    'text-[9px] font-semibold',
                     active ? 'text-primary' : 'text-muted-foreground'
                   )}>AI</span>
                 )}

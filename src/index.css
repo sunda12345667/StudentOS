@@ -98,7 +98,23 @@
 
 @layer base {
   * { @apply border-border outline-ring/50; }
-  body { @apply bg-background text-foreground font-inter antialiased; }
+  html, body, #root { 
+    @apply bg-background text-foreground font-inter antialiased;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  html {
+    background-color: hsl(var(--background));
+  }
+  body {
+    background-color: hsl(var(--background));
+  }
+  #root {
+    background-color: hsl(var(--background));
+    min-height: 100vh;
+  }
 }
 
 /* Scrollbar */
