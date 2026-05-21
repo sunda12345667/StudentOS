@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useOutletContext, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useOutletContext, Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,31 +29,63 @@ const ROLE_COLORS = {
 export default function Profile() {
   const { email } = useParams();
   const { user: currentUser } = useOutletContext();
+  const navigate = useNavigate();
   const [profileUser, setProfileUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
+  const loadedRef = useRef(false);
 
   const isOwn = currentUser?.email === email;
 
   const load = useCallback(async () => {
+    if (!email) return;
     setLoading(true);
-    const [users, profs, ps] = await Promise.all([
-      base44.entities.User.filter({ email }),
-      base44.entities.UserProfile.filter({ user_email: email }),
-      base44.entities.Post.filter({ author_email: email }, '-created_date', 20),
-    ]);
-    if (users.length) setProfileUser(users[0]);
-    if (profs.length) { setProfile(profs[0]); setEditForm(profs[0]); }
-    else { setEditForm({ user_email: email }); }
-    setPosts(ps);
+    setError(null);
+    loadedRef.current = false;
+    try {
+      // Fetch profile and posts in parallel
+      const [profs, ps] = await Promise.all([
+        base44.entities.UserProfile.filter({ user_email: email }),
+        base44.entities.Post.filter({ author_email: email }, '-created_date', 20),
+      ]);
+
+      if (profs.length) {
+        setProfile(profs[0]);
+        setEditForm(profs[0]);
+        // Build profileUser from profile data
+        setProfileUser({ full_name: profs[0].username || email.split('@')[0], email });
+      } else {
+        setProfile(null);
+        setEditForm({ user_email: email });
+        // If own profile and no profile record exists, use currentUser data
+        if (isOwn && currentUser) {
+          setProfileUser({ full_name: currentUser.full_name, email: currentUser.email });
+        } else {
+          setProfileUser({ full_name: email.split('@')[0], email });
+        }
+      }
+
+      setPosts(ps);
+    } catch (err) {
+      setError('Could not load profile. Please try again.');
+    }
     setLoading(false);
-  }, [email]);
+    loadedRef.current = true;
+  }, [email, isOwn, currentUser?.email]);
+
+  // Override profileUser name with currentUser full_name if viewing own profile
+  useEffect(() => {
+    if (isOwn && currentUser?.full_name) {
+      setProfileUser(p => p ? { ...p, full_name: currentUser.full_name } : { full_name: currentUser.full_name, email: currentUser.email });
+    }
+  }, [isOwn, currentUser?.full_name]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -115,13 +147,41 @@ export default function Profile() {
   };
 
   const xp = profile?.xp_points || 0;
-  const initials = profileUser?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+  const displayName = isOwn ? (currentUser?.full_name || profileUser?.full_name) : profileUser?.full_name;
+  const initials = displayName?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+  const handleMessageClick = async () => {
+    if (!currentUser || !email) return;
+    // Find or create a conversation with this user
+    const convs = await base44.entities.Conversation.list('-updated_date', 100);
+    const existing = convs.find(c => c.participants?.includes(currentUser.email) && c.participants?.includes(email));
+    if (existing) {
+      navigate('/messages', { state: { conversationId: existing.id } });
+      return;
+    }
+    const conv = await base44.entities.Conversation.create({
+      participants: [currentUser.email, email],
+      participant_names: [currentUser.full_name, profileUser?.full_name || email],
+      participant_avatars: [currentUser.avatar_url || '', profile?.avatar_url || ''],
+      last_message: '', last_message_time: new Date().toISOString(), last_sender: currentUser.email,
+    });
+    navigate('/messages', { state: { conversationId: conv.id } });
+  };
 
   if (loading) return (
     <div className="flex justify-center py-24">
       <div className="flex flex-col items-center gap-3">
         <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         <p className="text-sm text-muted-foreground">Loading profile...</p>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="flex justify-center py-24">
+      <div className="text-center">
+        <p className="text-muted-foreground mb-3">{error}</p>
+        <button onClick={load} className="text-primary text-sm hover:underline">Try again</button>
       </div>
     </div>
   );
@@ -184,8 +244,8 @@ export default function Profile() {
             ) : (
               <div className="flex items-center gap-2">
                 <FollowButton currentUser={currentUser} targetEmail={email} targetName={profileUser?.full_name} targetAvatar={profile?.avatar_url} />
-                <Button variant="outline" size="sm" className="rounded-xl gap-1.5 h-9" asChild>
-                  <Link to="/messages"><MessageCircle className="w-3.5 h-3.5" /> Message</Link>
+                <Button variant="outline" size="sm" className="rounded-xl gap-1.5 h-9" onClick={handleMessageClick}>
+                  <MessageCircle className="w-3.5 h-3.5" /> Message
                 </Button>
               </div>
             )}
@@ -195,7 +255,7 @@ export default function Profile() {
         {/* ── Info ── */}
         <div className="mb-4">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
-            <h1 className="text-xl sm:text-2xl font-black">{profileUser?.full_name || 'Student'}</h1>
+            <h1 className="text-xl sm:text-2xl font-black">{displayName || 'Student'}</h1>
             {profile?.role && (
               <Badge className={`text-[10px] px-2 py-0 border-0 ${ROLE_COLORS[profile.role] || ''}`}>
                 {profile.role}
@@ -372,7 +432,7 @@ export default function Profile() {
                 </label>
               </div>
               <div>
-                <p className="text-sm font-medium">{profileUser?.full_name}</p>
+                <p className="text-sm font-medium">{displayName}</p>
                 <p className="text-xs text-muted-foreground">Tap camera to change photo</p>
               </div>
             </div>

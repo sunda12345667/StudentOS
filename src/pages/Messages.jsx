@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useOutletContext, Link } from 'react-router-dom';
+import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ const TABS = [
 
 export default function Messages() {
   const { user } = useOutletContext();
+  const location = useLocation();
   const [tab, setTab] = useState('direct');
   const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat'
 
@@ -42,14 +43,25 @@ export default function Messages() {
   const [roomsLoading, setRoomsLoading] = useState(true);
   const [selectedRoom, setSelectedRoom] = useState(null);
 
+  const handleSelectConv = (conv) => { setSelected(conv); setTab('direct'); setMobileView('chat'); };
+  const handleSelectRoom = (room) => { setSelectedRoom(room); setMobileView('chat'); };
+
   // Load DMs
   useEffect(() => {
     if (!user?.email) return;
+    const targetId = location.state?.conversationId;
     base44.entities.Conversation.list('-updated_date', 50)
       .then(convs => {
         const mine = convs.filter(c => c.participants?.includes(user.email));
         setConversations(mine);
-        if (mine.length > 0) setSelected(mine[0]);
+        // Support opening a specific conversation from router state (e.g. from profile Message button)
+        if (targetId) {
+          const target = mine.find(c => c.id === targetId);
+          if (target) { setSelected(target); setMobileView('chat'); }
+          else if (mine.length > 0) setSelected(mine[0]);
+        } else if (mine.length > 0) {
+          setSelected(mine[0]);
+        }
       }).finally(() => setLoading(false));
   }, [user?.email]);
 
@@ -147,10 +159,6 @@ export default function Messages() {
       initials: (conv.participant_names?.[idx] || 'U').split(' ').map(n => n[0]).join('').toUpperCase(),
     };
   };
-
-  // Mobile handlers
-  const handleSelectConv = (conv) => { setSelected(conv); setMobileView('chat'); };
-  const handleSelectRoom = (room) => { setSelectedRoom(room); setMobileView('chat'); };
 
   return (
     <div className="max-w-6xl mx-auto px-0 sm:px-4 py-0 sm:py-4" style={{ height: 'calc(100vh - 4rem)' }}>

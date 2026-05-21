@@ -4,7 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark, Copy, Facebook, Twitter, X as XIcon } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -26,6 +27,7 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const [shareCount, setShareCount] = useState(post.share_count || 0);
   const [saved, setSaved] = useState(false);
   const [heartAnim, setHeartAnim] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const lastTap = useRef(0);
   const isOwner = post.author_email === currentUser?.email;
   const initials = post.author_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
@@ -55,15 +57,27 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
     lastTap.current = now;
   };
 
-  const handleShare = async () => {
+  const handleShare = () => setShowShare(true);
+
+  const doShare = async (method) => {
+    const url = `${window.location.origin}/`;
+    const text = `${post.content?.slice(0, 100)}...`;
+    if (method === 'native' && navigator.share) {
+      await navigator.share({ title: post.author_name, text, url }).catch(() => {});
+    } else if (method === 'copy') {
+      await navigator.clipboard.writeText(url);
+      toast.success('Link copied!');
+    } else if (method === 'whatsapp') {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
+    } else if (method === 'twitter') {
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, '_blank');
+    } else if (method === 'facebook') {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+    }
     const newCount = shareCount + 1;
     setShareCount(newCount);
+    setShowShare(false);
     await base44.entities.Post.update(post.id, { share_count: newCount });
-    if (navigator.share) {
-      navigator.share({ title: post.author_name, text: post.content, url: window.location.href }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(window.location.href).then(() => toast.success('Link copied!')).catch(() => {});
-    }
   };
 
   const renderContent = (text) => {
@@ -226,7 +240,7 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
           className={`flex-1 gap-2 h-10 text-sm font-medium transition-all ${liked ? 'text-rose-500' : 'text-muted-foreground hover:text-rose-500'}`}
           onClick={doLike}
         >
-          <Heart className={`w-4.5 h-4.5 transition-all duration-200 ${liked ? 'fill-rose-500 scale-110' : ''}`} />
+          <Heart className={`w-4 h-4 transition-all duration-200 ${liked ? 'fill-rose-500 scale-110' : ''}`} />
           <span className="text-xs">{liked ? 'Liked' : 'Like'}{likeCount > 0 ? ` · ${likeCount}` : ''}</span>
         </Button>
 
@@ -235,7 +249,7 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
           className="flex-1 gap-2 h-10 text-sm font-medium text-muted-foreground hover:text-primary"
           onClick={() => setShowComments(!showComments)}
         >
-          <MessageCircle className="w-4.5 h-4.5" />
+          <MessageCircle className="w-4 h-4" />
           <span className="text-xs">Comment{commentCount > 0 ? ` · ${commentCount}` : ''}</span>
         </Button>
 
@@ -263,6 +277,36 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
           <CommentSection postId={post.id} currentUser={currentUser} onCountChange={c => setCommentCount(c)} />
         </div>
       )}
+
+      {/* Share Modal */}
+      <Dialog open={showShare} onOpenChange={setShowShare}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold">Share Post</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            {[
+              { label: 'Copy Link', icon: Copy, method: 'copy', color: 'bg-slate-100 dark:bg-slate-800' },
+              { label: 'WhatsApp', icon: Share2, method: 'whatsapp', color: 'bg-green-100 dark:bg-green-900/30' },
+              { label: 'Twitter/X', icon: Share2, method: 'twitter', color: 'bg-sky-100 dark:bg-sky-900/30' },
+              { label: 'Facebook', icon: Share2, method: 'facebook', color: 'bg-blue-100 dark:bg-blue-900/30' },
+            ].map(s => (
+              <button key={s.method} onClick={() => doShare(s.method)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl hover:opacity-80 transition-opacity ${s.color}`}>
+                <s.icon className="w-5 h-5" />
+                <span className="text-xs font-medium">{s.label}</span>
+              </button>
+            ))}
+            {navigator.share && (
+              <button onClick={() => doShare('native')}
+                className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-purple-100 dark:bg-purple-900/30 hover:opacity-80 transition-opacity">
+                <Share2 className="w-5 h-5" />
+                <span className="text-xs font-medium">More</span>
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
