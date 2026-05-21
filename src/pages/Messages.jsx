@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
@@ -358,8 +358,8 @@ export default function Messages() {
     </div>
   );
 
-  // ─── Chat panel (memoized for stability) ─────────────────────────────────
-  const DirectChatPanel = useMemo(() => {
+  // ─── Chat panel ───────────────────────────────────────────────────────────
+  const DirectChatPanel = () => {
     if (!selected) {
       return (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -431,7 +431,7 @@ export default function Messages() {
         />
       </div>
     );
-  }, [selected, msgsLoading, messages, text, sending, user, bottomRef, sendDM, getOther, goBack]);
+  };
 
   return (
     <div className="flex md:h-[calc(100vh-64px)] h-full overflow-hidden">
