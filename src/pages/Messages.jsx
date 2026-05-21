@@ -32,17 +32,6 @@ export default function Messages() {
   const [msgsLoading, setMsgsLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
-  const [viewportHeight, setViewportHeight] = useState(null);
-
-  // Track visual viewport height so the chat container shrinks when keyboard opens
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setViewportHeight(vv.height);
-    update();
-    vv.addEventListener('resize', update);
-    return () => vv.removeEventListener('resize', update);
-  }, []);
 
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -389,7 +378,7 @@ export default function Messages() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 scroll-smooth">
           {msgsLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
           ) : messages.length === 0 ? (
@@ -448,25 +437,20 @@ export default function Messages() {
     );
   };
 
-  const chatHeight = viewportHeight ? viewportHeight - 56 : undefined;
-
   return (
-    <div
-      className="flex overflow-hidden md:h-[calc(100vh-64px)]"
-      style={{ height: chatHeight ? `${chatHeight}px` : 'calc(100dvh - 56px)' }}
-    >
+    <div className="flex md:h-[calc(100vh-64px)] h-full overflow-hidden">
       {/* ── Mobile: show either list or chat (full screen) ── */}
-      <div className="md:hidden w-full flex flex-col">
+      <div className="md:hidden w-full h-full flex flex-col">
         {mobileView === 'list' ? (
-          <div className="flex-1 overflow-hidden bg-card">
+          <div className="h-full overflow-hidden bg-card">
             <ListPanel />
           </div>
         ) : tab === 'direct' ? (
-          <div className="flex-1 flex flex-col bg-card" style={{ height: '100%' }}>
+          <div className="h-full flex flex-col bg-card">
             <DirectChatPanel />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col bg-card" style={{ height: '100%' }}>
+          <div className="h-full flex flex-col bg-card">
             <div className="flex-shrink-0 flex items-center gap-3 px-4 py-3 border-b border-border">
               <button onClick={goBack} className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted text-muted-foreground">
                 <ArrowLeft className="w-5 h-5" />

@@ -54,7 +54,7 @@ export default function AppLayout() {
   const sidebarWidth = isMobile ? 0 : collapsed ? 64 : 240;
 
   // On chat pages, remove bottom padding so the chat can use full viewport
-  const bottomPad = isMobile && !isChatPage ? 96 : isMobile && isChatPage ? 0 : 0;
+  const bottomPad = isMobile && isChatPage ? 0 : 96;
 
   return (
     <div className="bg-background" style={{ minHeight: '100dvh' }}>
