@@ -32,6 +32,17 @@ export default function Messages() {
   const [msgsLoading, setMsgsLoading] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
+  const [viewportHeight, setViewportHeight] = useState(null);
+
+  // Track visual viewport height so the chat container shrinks when keyboard opens
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setViewportHeight(vv.height);
+    update();
+    vv.addEventListener('resize', update);
+    return () => vv.removeEventListener('resize', update);
+  }, []);
 
   const [search, setSearch] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -437,8 +448,13 @@ export default function Messages() {
     );
   };
 
+  const chatHeight = viewportHeight ? viewportHeight - 56 : undefined;
+
   return (
-    <div className="flex overflow-hidden md:h-[calc(100vh-64px)] h-[calc(100dvh-56px)]">
+    <div
+      className="flex overflow-hidden md:h-[calc(100vh-64px)]"
+      style={{ height: chatHeight ? `${chatHeight}px` : 'calc(100dvh - 56px)' }}
+    >
       {/* ── Mobile: show either list or chat (full screen) ── */}
       <div className="md:hidden w-full flex flex-col">
         {mobileView === 'list' ? (
