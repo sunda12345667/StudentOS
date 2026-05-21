@@ -33,6 +33,10 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
   const handleFocus = useCallback(() => setIsFocused(true), []);
   const handleBlur = useCallback(() => setIsFocused(false), []);
 
+  const handleChange = useCallback((e) => {
+    onChange(e);
+  }, [onChange]);
+
   const handleTextareaRef = useCallback((r) => {
     textareaRef.current = r;
     if (inputRef) inputRef.current = r;
@@ -69,9 +73,7 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
           <textarea
             ref={handleTextareaRef}
             value={value}
-            onChange={(e) => {
-              onChange(e);
-            }}
+            onChange={handleChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder="Message..."
@@ -81,11 +83,16 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
               'placeholder:text-muted-foreground/50 disabled:opacity-50'
             )}
             rows={1}
-            style={{ maxHeight: '100px' }}
+            style={{ 
+              maxHeight: '100px',
+              WebkitAppearance: 'none',
+              touchAction: 'auto'
+            }}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck="false"
+            inputMode="text"
           />
         </div>
 
