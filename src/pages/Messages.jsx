@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
@@ -139,7 +139,7 @@ export default function Messages() {
     }).finally(() => setRoomsLoading(false));
   }, [user?.email]);
 
-  const sendDM = async (e) => {
+  const sendDM = useCallback(async (e) => {
     e.preventDefault();
     if (!text.trim() || sending) return;
     setSending(true);
@@ -176,7 +176,7 @@ export default function Messages() {
         is_read: false,
       }).catch(() => {});
     }
-  };
+  }, [text, sending, selected?.id, user?.email, user?.full_name, user?.avatar_url]);
 
   const searchUsers = async (q) => {
     setSearch(q);
@@ -412,7 +412,7 @@ export default function Messages() {
         {/* Premium input */}
         <PremiumMessageInput
           value={text}
-          onChange={e => setText(e.target.value)}
+          onChange={(e) => setText(e.target.value)}
           onSubmit={sendDM}
           disabled={sending}
           inputRef={inputRef}

@@ -4,14 +4,13 @@ import { Send, Plus, Smile, Mic, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function PremiumMessageInput({ value, onChange, onSubmit, disabled, inputRef }) {
-  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef(null);
   const hasMessage = useMemo(() => value.trim().length > 0, [value]);
 
-  // Auto-resize textarea (preserve cursor position) - only run when value length changes significantly
+  // Auto-resize textarea (preserve cursor position)
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea || !isFocused) return;
+    if (!textarea) return;
     
     // Save cursor position
     const cursorStart = textarea.selectionStart;
@@ -20,18 +19,11 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
     // Resize
     textarea.style.height = 'auto';
     const newHeight = Math.min(textarea.scrollHeight, 100);
-    if (newHeight !== textarea.offsetHeight) {
-      textarea.style.height = newHeight + 'px';
-    }
+    textarea.style.height = newHeight + 'px';
     
     // Restore cursor position
-    requestAnimationFrame(() => {
-      textarea.setSelectionRange(cursorStart, cursorEnd);
-    });
-  }, [value.length, isFocused]);
-
-  const handleFocus = useCallback(() => setIsFocused(true), []);
-  const handleBlur = useCallback(() => setIsFocused(false), []);
+    textarea.setSelectionRange(cursorStart, cursorEnd);
+  }, [value]);
 
   const handleChange = useCallback((e) => {
     onChange(e);
@@ -45,8 +37,7 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
   return (
     <div
       className={cn(
-        'flex-shrink-0 border-t border-border/50 bg-card/80 backdrop-blur-sm transition-all duration-200',
-        isFocused && 'bg-card/95'
+        'flex-shrink-0 border-t border-border/50 bg-card/80 backdrop-blur-sm'
       )}
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
     >
@@ -65,17 +56,17 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
         {/* Input field */}
         <div
           className={cn(
-            'flex-1 rounded-2xl px-4 py-2 transition-all duration-200',
-            'bg-muted/70 border border-muted focus-within:border-primary/30 focus-within:bg-muted',
+            'flex-1 rounded-2xl px-4 py-2',
+            'bg-muted/70 border border-muted',
+            'focus-within:border-primary/30 focus-within:bg-muted',
             'focus-within:ring-2 focus-within:ring-primary/10'
           )}
         >
           <textarea
+            key="message-input"
             ref={handleTextareaRef}
             value={value}
             onChange={handleChange}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
             placeholder="Message..."
             disabled={disabled}
             className={cn(
@@ -85,8 +76,7 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
             rows={1}
             style={{ 
               maxHeight: '100px',
-              WebkitAppearance: 'none',
-              touchAction: 'auto'
+              WebkitAppearance: 'none'
             }}
             autoComplete="off"
             autoCorrect="off"
@@ -113,7 +103,7 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
             type="submit"
             size="icon"
             className={cn(
-              'h-9 w-9 gradient-brand flex-shrink-0 transition-all duration-200',
+              'h-9 w-9 gradient-brand flex-shrink-0',
               'hover:shadow-lg hover:shadow-primary/20 active:scale-95'
             )}
             disabled={!hasMessage || disabled}
