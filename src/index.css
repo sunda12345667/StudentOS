@@ -162,3 +162,10 @@
 
 /* Framer Motion page transitions root */
 #root { overflow-x: hidden; }
+
+/* Hide bottom nav when keyboard is open (mobile only) */
+@media (max-width: 768px) {
+  .keyboard-open .keyboard-hide-nav {
+    transform: translateY(120%) !important;
+  }
+}

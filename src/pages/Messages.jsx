@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useOutletContext, Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 import RoomList from '@/components/messages/RoomList';
 import RoomChatWindow from '@/components/messages/RoomChatWindow';
 import PremiumChatHeader from '@/components/messages/PremiumChatHeader';
-import PremiumMessageInput from '@/components/messages/PremiumMessageInput';
+import ChatComposer from '@/components/messages/ChatComposer';
 import EmptyChatState from '@/components/messages/EmptyChatState';
 import { toast } from 'sonner';
 
@@ -112,12 +112,27 @@ export default function Messages() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Focus input when chat opens on mobile
+  // Keyboard detection for CSS-only nav hiding
   useEffect(() => {
-    if (mobileView === 'chat' && tab === 'direct') {
-      setTimeout(() => inputRef.current?.focus(), 300);
-    }
-  }, [mobileView, tab]);
+    const handleKeyboardChange = () => {
+      const isKeyboardOpen = document.activeElement?.tagName === 'TEXTAREA' || 
+                             document.activeElement?.tagName === 'INPUT';
+      if (isKeyboardOpen) {
+        document.body.classList.add('keyboard-open');
+      } else {
+        document.body.classList.remove('keyboard-open');
+      }
+    };
+
+    document.addEventListener('focusin', handleKeyboardChange);
+    document.addEventListener('focusout', handleKeyboardChange);
+    
+    return () => {
+      document.removeEventListener('focusin', handleKeyboardChange);
+      document.removeEventListener('focusout', handleKeyboardChange);
+      document.body.classList.remove('keyboard-open');
+    };
+  }, []);
 
   // Rooms
   useEffect(() => {
@@ -343,8 +358,8 @@ export default function Messages() {
     </div>
   );
 
-  // ─── Chat panel ───────────────────────────────────────────────────────────
-  const DirectChatPanel = () => {
+  // ─── Chat panel (memoized for stability) ─────────────────────────────────
+  const DirectChatPanel = useMemo(() => {
     if (!selected) {
       return (
         <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -358,11 +373,9 @@ export default function Messages() {
     }
     const other = getOther(selected);
     return (
-      <div className="flex flex-col h-full">
-        {/* Premium header */}
+      <div className="flex flex-col h-full" style={{ height: '100dvh' }}>
         <PremiumChatHeader user={user} other={other} onBack={goBack} />
 
-        {/* Messages with gradient background */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth relative">
           {msgsLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
@@ -409,8 +422,7 @@ export default function Messages() {
           )}
         </div>
 
-        {/* Premium input */}
-        <PremiumMessageInput
+        <ChatComposer
           value={text}
           onChange={(e) => setText(e.target.value)}
           onSubmit={sendDM}
@@ -419,7 +431,7 @@ export default function Messages() {
         />
       </div>
     );
-  };
+  }, [selected, msgsLoading, messages, text, sending, user, bottomRef, sendDM, getOther, goBack]);
 
   return (
     <div className="flex md:h-[calc(100vh-64px)] h-full overflow-hidden">
@@ -430,7 +442,7 @@ export default function Messages() {
             <ListPanel />
           </div>
         ) : tab === 'direct' ? (
-          <div className="h-full flex flex-col bg-card">
+          <div className="h-full flex flex-col bg-card" style={{ height: '100dvh' }}>
             <DirectChatPanel />
           </div>
         ) : (
