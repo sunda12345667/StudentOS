@@ -43,7 +43,7 @@ export default function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobile
                 <Zap className="w-4 h-4 text-white" />
               </div>
               <div>
-                <p className="text-white font-black text-sm tracking-tight">EduVerse</p>
+                <p className="text-white font-black text-sm tracking-tight">StudentOS</p>
                 <p className="text-[10px] text-blue-400 font-semibold tracking-widest uppercase">Admin</p>
               </div>
             </div>

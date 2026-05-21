@@ -40,7 +40,7 @@ export default function AdvertiserLogin({ onSuccess }) {
           <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-2xl mx-auto mb-4">
             <Megaphone className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-white font-black text-2xl">EduVerse Ads</h1>
+          <h1 className="text-white font-black text-2xl">StudentOS Ads</h1>
           <p className="text-white/40 text-sm mt-1">Advertiser Portal</p>
         </div>
 
