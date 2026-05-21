@@ -63,7 +63,6 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
           )}
         >
           <textarea
-            key="message-input"
             ref={handleTextareaRef}
             value={value}
             onChange={handleChange}
