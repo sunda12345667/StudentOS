@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, X, GraduationCap, Bell, Wallet } from 'lucide-react';
+import { Search, X, GraduationCap, Bell, Wallet, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '@/lib/ThemeContext';
 import {
@@ -17,6 +17,7 @@ export default function MobileTopbar({ user }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const initials = user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
 
   return (
@@ -69,12 +70,17 @@ export default function MobileTopbar({ user }) {
             <div className="flex items-center gap-1">
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full"
                 onClick={() => setSearchOpen(true)}>
-                <Search className="w-4.5 h-4.5" />
+                <Search className="w-4 h-4" />
+              </Button>
+
+              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full"
+                onClick={toggleTheme}>
+                {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
 
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" asChild>
                 <Link to="/notifications">
-                  <Bell className="w-4.5 h-4.5" />
+                  <Bell className="w-4 h-4" />
                 </Link>
               </Button>
 

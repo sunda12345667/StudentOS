@@ -415,7 +415,10 @@ export default function Messages() {
         </div>
 
         {/* Input */}
-        <div className="flex-shrink-0 border-t border-border bg-card safe-area-bottom">
+        <div
+          className="flex-shrink-0 border-t border-border bg-card"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        >
           <form onSubmit={sendDM} className="flex items-center gap-2 p-3">
             <Input
               ref={inputRef}
@@ -435,7 +438,7 @@ export default function Messages() {
   };
 
   return (
-    <div className="flex overflow-hidden md:h-[calc(100vh-64px)] h-[calc(100dvh-152px)]">
+    <div className="flex overflow-hidden md:h-[calc(100vh-64px)] h-[calc(100dvh-56px)]">
       {/* ── Mobile: show either list or chat (full screen) ── */}
       <div className="md:hidden w-full flex flex-col">
         {mobileView === 'list' ? (

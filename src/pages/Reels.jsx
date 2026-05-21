@@ -147,12 +147,26 @@ export default function Reels() {
 
 function ReelCard({ reel, user, onLike, index, onUpdate }) {
   const videoRef = useRef(null);
+  const sheetRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const liked = reel.likes?.includes(user?.email);
   const initials = reel.author_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+  // Lift bottom sheet above virtual keyboard
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      if (!sheetRef.current) return;
+      const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      sheetRef.current.style.bottom = `${keyboardHeight}px`;
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
@@ -258,19 +272,21 @@ function ReelCard({ reel, user, onLike, index, onUpdate }) {
               onClick={() => setShowComments(false)}
             />
             <motion.div
+              ref={sheetRef}
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 z-50 bg-card rounded-t-2xl"
-              style={{ maxHeight: '75vh' }}
+              className="fixed left-0 right-0 z-50 bg-card rounded-t-2xl flex flex-col"
+              style={{
+                bottom: 0,
+                maxHeight: '80dvh',
+              }}
             >
-              <div className="flex flex-col" style={{ maxHeight: '75vh' }}>
-                <ReelComments
-                  reel={reel}
-                  user={user}
-                  onClose={() => setShowComments(false)}
-                  onCountChange={(count) => onUpdate({ comment_count: count })}
-                />
-              </div>
+              <ReelComments
+                reel={reel}
+                user={user}
+                onClose={() => setShowComments(false)}
+                onCountChange={(count) => onUpdate({ comment_count: count })}
+              />
             </motion.div>
           </>
         )}

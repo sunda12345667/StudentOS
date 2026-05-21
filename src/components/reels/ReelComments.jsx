@@ -22,6 +22,8 @@ export default function ReelComments({ reel, user, onClose, onCountChange }) {
     setTimeout(() => inputRef.current?.focus(), 400);
   }, [reel?.id]);
 
+
+
   const submit = async (e) => {
     e?.preventDefault();
     if (!text.trim() || sending || !user) return;
@@ -121,7 +123,10 @@ export default function ReelComments({ reel, user, onClose, onCountChange }) {
 
       {/* Input */}
       {user && (
-        <div className="flex-shrink-0 border-t border-border p-3 bg-card safe-area-bottom">
+        <div
+          className="flex-shrink-0 border-t border-border bg-card"
+          style={{ padding: '12px 12px', paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}
+        >
           <form onSubmit={submit} className="flex items-center gap-2">
             <Avatar className="h-8 w-8 flex-shrink-0">
               <AvatarImage src={user.avatar_url} />

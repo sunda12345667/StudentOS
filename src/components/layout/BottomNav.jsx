@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { icon: MessageCircle,label: 'Messages',  path: '/messages', badge: true },
 ];
 
-export default function BottomNav({ user }) {
+export default function BottomNav({ user, hidden = false }) {
   const location = useLocation();
   const [unread, setUnread] = useState(0);
 
@@ -34,8 +34,11 @@ export default function BottomNav({ user }) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex items-center"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="fixed bottom-0 left-0 right-0 z-50 flex items-center transition-transform duration-200"
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        transform: hidden ? 'translateY(120%)' : 'translateY(0)',
+      }}
     >
       {/* Glass container */}
       <div className="w-full mx-3 mb-3 rounded-2xl overflow-hidden"

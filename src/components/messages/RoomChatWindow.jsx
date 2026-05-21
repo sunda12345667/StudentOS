@@ -125,18 +125,23 @@ export default function RoomChatWindow({ room, currentUser }) {
       </div>
 
       {/* Input */}
-      <form onSubmit={send} className="flex items-center gap-2 p-3 border-t border-border">
-        <Input
-          value={text}
-          onChange={e => setText(e.target.value)}
-          placeholder={`Message #${room.name?.toLowerCase().replace(/\s/g, '-')}`}
-          className="flex-1 bg-muted border-0 rounded-full text-sm"
-          disabled={sending}
-        />
-        <Button type="submit" variant="ghost" size="icon" className="text-primary" disabled={!text.trim() || sending}>
-          {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-        </Button>
-      </form>
+      <div
+        className="flex-shrink-0 border-t border-border bg-card"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        <form onSubmit={send} className="flex items-center gap-2 p-3">
+          <Input
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder={`Message #${room.name?.toLowerCase().replace(/\s/g, '-')}`}
+            className="flex-1 bg-muted border-0 rounded-full text-sm"
+            disabled={sending}
+          />
+          <Button type="submit" variant="ghost" size="icon" className="text-primary" disabled={!text.trim() || sending}>
+            {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }
