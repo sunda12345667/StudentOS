@@ -25,7 +25,7 @@ export default function AdvertiserWallet({ advertiser, onBalanceUpdate }) {
     setLoading(true);
     try {
       const origin = window.location.origin;
-      const res = await base44.functions.invoke('stripeTopUp', {
+      const res = await base44.functions.invoke('paystackTopUp', {
         amount: num,
         advertiser_id: advertiser.id,
         advertiser_email: advertiser.contact_email,
@@ -46,7 +46,7 @@ export default function AdvertiserWallet({ advertiser, onBalanceUpdate }) {
     }
   };
 
-  // Check for redirect back from Stripe
+  // Check for redirect back from Paystack
   const params = new URLSearchParams(window.location.search);
   const topupStatus = params.get('topup');
 
