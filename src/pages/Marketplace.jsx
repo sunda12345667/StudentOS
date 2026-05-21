@@ -98,13 +98,15 @@ export default function Marketplace() {
       </div>
 
       <Tabs defaultValue="browse">
-        <TabsList className="mb-6">
-          <TabsTrigger value="browse" className="gap-1.5"><ShoppingBag className="w-4 h-4" />Browse</TabsTrigger>
-          <TabsTrigger value="my-listings" className="gap-1.5"><Package className="w-4 h-4" />My Listings</TabsTrigger>
-          <TabsTrigger value="orders" className="gap-1.5"><ShieldCheck className="w-4 h-4" />Orders</TabsTrigger>
-          <TabsTrigger value="analytics" className="gap-1.5"><BarChart2 className="w-4 h-4" />Analytics</TabsTrigger>
-          <TabsTrigger value="wallet" className="gap-1.5"><Wallet className="w-4 h-4" />Wallet</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-1 mb-6">
+          <TabsList className="w-max min-w-full">
+            <TabsTrigger value="browse" className="gap-1.5"><ShoppingBag className="w-4 h-4" />Browse</TabsTrigger>
+            <TabsTrigger value="my-listings" className="gap-1.5"><Package className="w-4 h-4" />My Listings</TabsTrigger>
+            <TabsTrigger value="orders" className="gap-1.5"><ShieldCheck className="w-4 h-4" />Orders</TabsTrigger>
+            <TabsTrigger value="analytics" className="gap-1.5"><BarChart2 className="w-4 h-4" />Analytics</TabsTrigger>
+            <TabsTrigger value="wallet" className="gap-1.5"><Wallet className="w-4 h-4" />Wallet</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="browse">
           {/* Search + Filters */}

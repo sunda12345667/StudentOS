@@ -19,6 +19,7 @@ const TABS = [
 export default function Messages() {
   const { user } = useOutletContext();
   const [tab, setTab] = useState('direct');
+  const [mobileView, setMobileView] = useState('list'); // 'list' | 'chat'
 
   // Direct messaging state
   const [conversations, setConversations] = useState([]);
@@ -110,12 +111,16 @@ export default function Messages() {
     };
   };
 
-  return (
-    <div className="max-w-6xl mx-auto px-4 py-4" style={{ height: 'calc(100vh - 4rem)' }}>
-      <Card className="flex h-full overflow-hidden shadow-lg">
+  // Mobile handlers
+  const handleSelectConv = (conv) => { setSelected(conv); setMobileView('chat'); };
+  const handleSelectRoom = (room) => { setSelectedRoom(room); setMobileView('chat'); };
 
-        {/* Sidebar */}
-        <div className="w-72 flex-shrink-0 border-r border-border flex flex-col">
+  return (
+    <div className="max-w-6xl mx-auto px-0 sm:px-4 py-0 sm:py-4" style={{ height: 'calc(100vh - 4rem)' }}>
+      <Card className="flex h-full overflow-hidden shadow-lg rounded-none sm:rounded-lg">
+
+        {/* Sidebar — hidden on mobile when chat is open */}
+        <div className={`${mobileView === 'chat' ? 'hidden' : 'flex'} sm:flex w-full sm:w-72 flex-shrink-0 border-r border-border flex-col`}>
           {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-3">
@@ -155,7 +160,7 @@ export default function Messages() {
                 conversations.map(conv => {
                   const other = getOther(conv);
                   return (
-                    <button key={conv.id} onClick={() => setSelected(conv)}
+                    <button key={conv.id} onClick={() => handleSelectConv(conv)}
                       className={cn("w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left", selected?.id === conv.id ? "bg-primary/10" : "hover:bg-muted")}>
                       <div className="relative">
                         <Avatar className="h-10 w-10">
@@ -190,19 +195,22 @@ export default function Messages() {
               <RoomList
                 rooms={rooms}
                 selectedId={selectedRoom?.id}
-                onSelect={setSelectedRoom}
+                onSelect={handleSelectRoom}
                 loading={roomsLoading}
               />
             </div>
           )}
         </div>
 
-        {/* Main panel */}
+        {/* Main panel — hidden on mobile when list is shown */}
         {tab === 'direct' ? (
           selected ? (
-            <div className="flex-1 flex flex-col">
+            <div className={`${mobileView === 'list' ? 'hidden' : 'flex'} sm:flex flex-1 flex-col`}>
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <div className="flex items-center gap-3">
+                  <button onClick={() => setMobileView('list')} className="sm:hidden mr-1 text-muted-foreground hover:text-foreground">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
                   <div className="relative">
                     <Avatar className="h-9 w-9">
                       <AvatarImage src={getOther(selected).avatar} />
@@ -259,7 +267,9 @@ export default function Messages() {
           )
         ) : (
           selectedRoom ? (
-            <RoomChatWindow room={selectedRoom} currentUser={user} />
+            <div className={`${mobileView === 'list' ? 'hidden' : 'flex'} sm:flex flex-1 flex-col overflow-hidden`}>
+              <RoomChatWindow room={selectedRoom} currentUser={user} onBack={() => setMobileView('list')} />
+            </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
