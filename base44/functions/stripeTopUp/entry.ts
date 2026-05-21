@@ -1,7 +1,4 @@
-import Stripe from 'npm:stripe@14.21.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
 
 Deno.serve(async (req) => {
   try {
@@ -12,38 +9,44 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Minimum top-up is ₦1,000' }, { status: 400 });
     }
 
-    // Convert Naira to kobo (Stripe smallest unit)
-    const amountKobo = Math.round(amount * 100);
+    const paystackSecret = Deno.env.get('PAYSTACK_SECRET_KEY');
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      line_items: [{
-        price_data: {
-          currency: 'ngn',
-          product_data: {
-            name: 'EduVerse Ads Wallet Top-Up',
-            description: `Add ₦${Number(amount).toLocaleString()} to your advertising wallet`,
-          },
-          unit_amount: amountKobo,
-        },
-        quantity: 1,
-      }],
-      success_url: success_url || 'https://app.base44.com/advertiser?topup=success',
-      cancel_url: cancel_url || 'https://app.base44.com/advertiser?topup=cancelled',
-      customer_email: advertiser_email,
-      metadata: {
-        base44_app_id: Deno.env.get('BASE44_APP_ID'),
-        advertiser_id,
-        advertiser_name,
-        amount,
-        type: 'wallet_topup',
+    // Initialize Paystack transaction
+    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${paystackSecret}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        email: advertiser_email,
+        amount: Math.round(amount * 100), // Convert to kobo
+        currency: 'NGN',
+        callback_url: success_url || `${req.headers.get('origin') || ''}/advertiser/wallet?topup=success`,
+        metadata: {
+          advertiser_id,
+          advertiser_name,
+          amount,
+          type: 'wallet_topup',
+          cancel_action: cancel_url || '/advertiser/wallet?topup=cancelled',
+        },
+        channels: ['card', 'bank', 'ussd', 'mobile_money'],
+      }),
     });
 
-    return Response.json({ url: session.url, session_id: session.id });
+    const data = await response.json();
+
+    if (!data.status) {
+      console.error('Paystack init error:', data.message);
+      return Response.json({ error: data.message || 'Failed to initialize payment' }, { status: 500 });
+    }
+
+    return Response.json({
+      url: data.data.authorization_url,
+      reference: data.data.reference,
+    });
   } catch (error) {
-    console.error('Stripe topup error:', error);
+    console.error('Paystack topup error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

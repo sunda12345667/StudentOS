@@ -37,7 +37,7 @@ export default function AdvertiserWallet({ advertiser, onBalanceUpdate }) {
       if (res.data?.url) {
         window.location.href = res.data.url;
       } else {
-        toast.error(res.data?.error || 'Could not create checkout session');
+        toast.error(res.data?.error || 'Could not initialize payment');
       }
     } catch (e) {
       toast.error(e.message);
@@ -123,10 +123,10 @@ export default function AdvertiserWallet({ advertiser, onBalanceUpdate }) {
 
           <Button onClick={handleTopUp} disabled={loading || !amount} className="w-full bg-blue-600 hover:bg-blue-700 border-0 gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-            {loading ? 'Redirecting...' : `Pay ₦${amount ? Number(amount).toLocaleString() : '0'} via Stripe`}
+            {loading ? 'Redirecting to Paystack...' : `Pay ₦${amount ? Number(amount).toLocaleString() : '0'} via Paystack`}
           </Button>
 
-          <p className="text-white/20 text-[10px] text-center">Secured by Stripe. You'll be redirected to complete payment.</p>
+          <p className="text-white/20 text-[10px] text-center">Secured by Paystack. You'll be redirected to complete payment.</p>
         </div>
       )}
 
@@ -134,7 +134,7 @@ export default function AdvertiserWallet({ advertiser, onBalanceUpdate }) {
       <div className="rounded-2xl border border-white/8 bg-[#0d1220] p-4 space-y-2">
         <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">How it works</p>
         <ul className="space-y-1.5 text-white/30 text-xs">
-          <li>• Add funds to your wallet using a debit/credit card via Stripe</li>
+          <li>• Add funds to your wallet using a debit/credit card via Paystack</li>
           <li>• Your balance is used to fund your active ad campaigns</li>
           <li>• Campaign spend is deducted automatically as impressions are served</li>
           <li>• Invoices are generated monthly and sent to your email</li>

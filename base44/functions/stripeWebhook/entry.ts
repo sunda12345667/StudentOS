@@ -1,29 +1,32 @@
-import Stripe from 'npm:stripe@14.21.0';
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY'));
 
 Deno.serve(async (req) => {
   try {
-    const body = await req.text();
-    const sig = req.headers.get('stripe-signature');
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
+    const body = await req.json().catch(() => ({}));
 
-    let event;
-    if (webhookSecret && sig) {
-      event = await stripe.webhooks.constructEventAsync(body, sig, webhookSecret);
-    } else {
-      event = JSON.parse(body);
-    }
+    // Paystack sends event in body directly
+    const event = body;
 
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-      const meta = session.metadata || {};
+    if (event.event === 'charge.success') {
+      const data = event.data;
+      const meta = data.metadata || {};
 
       if (meta.type === 'wallet_topup' && meta.advertiser_id) {
         const base44 = createClientFromRequest(req);
         const amount = Number(meta.amount);
         const advertiserId = meta.advertiser_id;
+
+        // Verify transaction with Paystack before crediting
+        const paystackSecret = Deno.env.get('PAYSTACK_SECRET_KEY');
+        const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${data.reference}`, {
+          headers: { 'Authorization': `Bearer ${paystackSecret}` },
+        });
+        const verifyData = await verifyRes.json();
+
+        if (!verifyData.status || verifyData.data?.status !== 'success') {
+          console.error('Transaction verification failed:', verifyData.message);
+          return Response.json({ error: 'Verification failed' }, { status: 400 });
+        }
 
         // Update advertiser balance
         const advertisers = await base44.asServiceRole.entities.Advertiser.filter({ id: advertiserId });
