@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, ShieldCheck, RefreshCw,
-  Loader2, Plus, Minus, TrendingUp, Clock, CheckCircle2, XCircle
+  Loader2, Plus, Minus, TrendingUp, CreditCard, AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -24,26 +24,40 @@ const TX_CONFIG = {
 
 const FUND_AMOUNTS = [500, 1000, 2000, 5000, 10000];
 
-function FundModal({ open, onClose, wallet, onSuccess }) {
+function FundModal({ open, onClose }) {
   const [amount, setAmount] = useState('');
   const [custom, setCustom] = useState('');
   const [loading, setLoading] = useState(false);
 
   const finalAmount = custom ? Number(custom) : Number(amount);
 
-  const fund = async () => {
+  const handleFund = async () => {
     if (!finalAmount || finalAmount < 100) { toast.error('Minimum funding amount is ₦100'); return; }
+
+    if (window.self !== window.top) {
+      alert('Payment checkout only works from the published app. Please open the app in a new tab.');
+      return;
+    }
+
     setLoading(true);
-    const updated = await recordTransaction(wallet, {
-      type: 'fund',
-      amount: finalAmount,
-      description: `Wallet funded with ₦${finalAmount.toLocaleString()}`,
-      reference: `FUND-${Date.now()}`,
-    });
-    toast.success(`₦${finalAmount.toLocaleString()} added to your wallet!`);
-    setLoading(false);
-    onSuccess(updated);
-    onClose();
+    try {
+      const origin = window.location.origin;
+      const res = await base44.functions.invoke('paystackWalletTopUp', {
+        amount: finalAmount,
+        success_url: `${origin}/marketplace?wallet=funded`,
+        cancel_url: `${origin}/marketplace?wallet=cancelled`,
+      });
+
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        toast.error(res.data?.error || 'Could not initialize payment');
+      }
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,9 +65,8 @@ function FundModal({ open, onClose, wallet, onSuccess }) {
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Wallet className="w-5 h-5 text-primary" />Fund Wallet</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
-          <p className="text-sm text-muted-foreground">Select or enter an amount to add to your wallet balance.</p>
+          <p className="text-sm text-muted-foreground">Select or enter an amount. You'll be redirected to Paystack to complete payment securely.</p>
 
-          {/* Quick amounts */}
           <div className="grid grid-cols-3 gap-2">
             {FUND_AMOUNTS.map(a => (
               <button key={a}
@@ -64,7 +77,6 @@ function FundModal({ open, onClose, wallet, onSuccess }) {
             ))}
           </div>
 
-          {/* Custom amount */}
           <div>
             <label className="text-xs font-medium mb-1 block text-muted-foreground">Or enter custom amount (₦)</label>
             <Input
@@ -78,14 +90,15 @@ function FundModal({ open, onClose, wallet, onSuccess }) {
 
           {finalAmount > 0 && (
             <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center font-semibold">
-              + ₦{finalAmount.toLocaleString()} will be added to your balance
+              Pay ₦{finalAmount.toLocaleString()} via Paystack
             </div>
           )}
 
-          <Button onClick={fund} disabled={loading || !finalAmount} className="w-full gradient-brand border-0 gap-2">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Add Funds
+          <Button onClick={handleFund} disabled={loading || !finalAmount} className="w-full gradient-brand border-0 gap-2">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+            {loading ? 'Redirecting to Paystack...' : 'Pay with Paystack'}
           </Button>
+          <p className="text-[10px] text-muted-foreground text-center">Secured by Paystack. Your balance updates automatically after payment.</p>
         </div>
       </DialogContent>
     </Dialog>
@@ -107,7 +120,7 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
       description: `Withdrawal of ₦${amt.toLocaleString()}`,
       reference: `WD-${Date.now()}`,
     });
-    toast.success(`₦${amt.toLocaleString()} withdrawn!`);
+    toast.success(`₦${amt.toLocaleString()} withdrawal recorded!`);
     setLoading(false);
     onSuccess(updated);
     onClose();
@@ -183,6 +196,10 @@ export default function WalletDashboard({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Handle redirect back from Paystack
+  const params = new URLSearchParams(window.location.search);
+  const walletStatus = params.get('wallet');
+
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 
   const stats = [
@@ -194,6 +211,19 @@ export default function WalletDashboard({ user }) {
 
   return (
     <div className="space-y-6">
+      {walletStatus === 'funded' && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+          <CreditCard className="w-4 h-4 flex-shrink-0" />
+          Payment successful! Your balance will update shortly after confirmation.
+        </div>
+      )}
+      {walletStatus === 'cancelled' && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          Payment was cancelled.
+        </div>
+      )}
+
       {/* Balance card */}
       <Card className="gradient-brand border-0 text-white overflow-hidden relative">
         <CardContent className="p-6">
@@ -252,7 +282,7 @@ export default function WalletDashboard({ user }) {
         </CardContent>
       </Card>
 
-      <FundModal open={fundOpen} onClose={() => setFundOpen(false)} wallet={wallet} onSuccess={w => { setWallet(w); load(); }} />
+      <FundModal open={fundOpen} onClose={() => setFundOpen(false)} />
       <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} wallet={wallet} onSuccess={w => { setWallet(w); load(); }} />
     </div>
   );

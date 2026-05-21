@@ -36,11 +36,6 @@ Deno.serve(async (req) => {
       const meta = chargeData.metadata || {};
       const reference = chargeData.reference;
 
-      // Only process wallet top-ups
-      if (meta.type !== 'wallet_topup' || !meta.advertiser_id) {
-        return Response.json({ received: true });
-      }
-
       // Server-side verification against Paystack API
       const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: { 'Authorization': `Bearer ${paystackSecret}` },
@@ -54,41 +49,68 @@ Deno.serve(async (req) => {
 
       // Use verified amount from Paystack (kobo → naira), not metadata
       const verifiedAmountNaira = verifyData.data.amount / 100;
-      const advertiserId = meta.advertiser_id;
 
       const base44 = createClientFromRequest(req);
-      const advertisers = await base44.asServiceRole.entities.Advertiser.filter({ id: advertiserId });
-
-      if (advertisers.length === 0) {
-        console.error('Advertiser not found:', advertiserId);
-        return Response.json({ error: 'Advertiser not found' }, { status: 404 });
-      }
-
-      const adv = advertisers[0];
 
       // Idempotency: check if this reference was already processed
-      // Store the reference in notes or use a dedicated field check
       const existingTx = await base44.asServiceRole.entities.Transaction.filter({ reference });
       if (existingTx.length > 0) {
         console.log(`Reference ${reference} already processed. Skipping.`);
         return Response.json({ received: true });
       }
 
-      const newBalance = (adv.balance || 0) + verifiedAmountNaira;
-      await base44.asServiceRole.entities.Advertiser.update(advertiserId, { balance: newBalance });
+      // --- Advertiser wallet top-up ---
+      if (meta.type === 'wallet_topup' && meta.advertiser_id) {
+        const advertisers = await base44.asServiceRole.entities.Advertiser.filter({ id: meta.advertiser_id });
+        if (advertisers.length === 0) {
+          console.error('Advertiser not found:', meta.advertiser_id);
+          return Response.json({ error: 'Advertiser not found' }, { status: 404 });
+        }
+        const adv = advertisers[0];
+        const newBalance = (adv.balance || 0) + verifiedAmountNaira;
+        await base44.asServiceRole.entities.Advertiser.update(meta.advertiser_id, { balance: newBalance });
+        await base44.asServiceRole.entities.Transaction.create({
+          user_email: adv.contact_email,
+          type: 'fund',
+          amount: verifiedAmountNaira,
+          balance_after: newBalance,
+          description: `Advertiser wallet funded via Paystack`,
+          reference,
+          status: 'completed',
+        });
+        console.log(`Advertiser wallet credited: ${adv.company_name} +₦${verifiedAmountNaira} (ref: ${reference})`);
+      }
 
-      // Log transaction record
-      await base44.asServiceRole.entities.Transaction.create({
-        user_email: adv.contact_email,
-        type: 'fund',
-        amount: verifiedAmountNaira,
-        balance_after: newBalance,
-        description: `Wallet funded via Paystack`,
-        reference,
-        status: 'completed',
-      });
-
-      console.log(`Wallet credited: ${adv.company_name} +₦${verifiedAmountNaira} → balance: ₦${newBalance} (ref: ${reference})`);
+      // --- Student wallet top-up ---
+      else if (meta.type === 'student_wallet_topup' && meta.user_email) {
+        const wallets = await base44.asServiceRole.entities.Wallet.filter({ user_email: meta.user_email });
+        let wallet = wallets[0];
+        if (!wallet) {
+          wallet = await base44.asServiceRole.entities.Wallet.create({
+            user_email: meta.user_email,
+            user_name: meta.user_name || '',
+            balance: 0, total_funded: 0, total_spent: 0, total_earned: 0, total_withdrawn: 0,
+          });
+        }
+        const newBalance = (wallet.balance || 0) + verifiedAmountNaira;
+        await base44.asServiceRole.entities.Wallet.update(wallet.id, {
+          balance: newBalance,
+          total_funded: (wallet.total_funded || 0) + verifiedAmountNaira,
+        });
+        await base44.asServiceRole.entities.Transaction.create({
+          user_email: meta.user_email,
+          type: 'fund',
+          amount: verifiedAmountNaira,
+          balance_before: wallet.balance || 0,
+          balance_after: newBalance,
+          description: `Wallet funded via Paystack`,
+          reference,
+          status: 'completed',
+        });
+        console.log(`Student wallet credited: ${meta.user_email} +₦${verifiedAmountNaira} (ref: ${reference})`);
+      } else {
+        console.log(`Unknown payment type: ${meta.type} — skipping`);
+      }
     }
 
     return Response.json({ received: true });
