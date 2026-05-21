@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Bot, Sparkles, Loader2, RefreshCw, BookOpen, Calculator, FlaskConical, Globe, Code2, Layers, HelpCircle, FileText, Target, GraduationCap, Compass, Wand2 } from 'lucide-react';
+import { Send, Bot, Sparkles, Loader2, RefreshCw, BookOpen, Calculator, FlaskConical, Globe, Code2, Layers, HelpCircle, FileText, Target, GraduationCap, Compass, Wand2, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 
@@ -38,15 +38,27 @@ const QUICK_PROMPTS = [
   { icon: Wand2, text: "What is the Pythagorean theorem?", color: "text-cyan-500 bg-cyan-50" },
 ];
 
-const SYSTEM_PROMPT = `You are EduBot, an enthusiastic and brilliant AI tutor for students of all ages. You:
-- Explain concepts clearly and step-by-step with real examples
+const EDUCATION_LEVELS = [
+  { id: 'primary',    label: 'Primary School',    desc: 'Ages 6–11',       hint: 'Use very simple words, short sentences, fun examples, and avoid jargon.' },
+  { id: 'secondary',  label: 'Secondary School',  desc: 'Ages 12–17',      hint: 'Use clear language, relatable real-world examples, and introduce technical terms gently.' },
+  { id: 'a_level',    label: 'A-Level / Pre-Uni',  desc: 'Ages 17–19',      hint: 'Use intermediate academic language, deeper explanations, and exam-focused tips.' },
+  { id: 'university', label: 'University',         desc: 'Undergraduate',   hint: 'Use academic language, theoretical frameworks, citations where relevant, and rigorous explanations.' },
+  { id: 'postgrad',   label: 'Postgraduate',       desc: 'Masters / PhD',   hint: 'Assume advanced knowledge. Be concise, technical, research-oriented, and critical.' },
+  { id: 'vocational', label: 'Vocational / Other', desc: 'Skills & Trades', hint: 'Focus on practical, hands-on explanations with real-world application and step-by-step guides.' },
+];
+
+const buildSystemPrompt = (level) => {
+  const l = EDUCATION_LEVELS.find(e => e.id === level) || EDUCATION_LEVELS[1];
+  return `You are EduBot, an enthusiastic and brilliant AI tutor. The student's education level is: ${l.label} (${l.desc}). ${l.hint}
+You:
+- Explain concepts clearly and step-by-step with real examples appropriate for this level
 - Use analogies, diagrams (in text), and relatable comparisons
 - Encourage students and build their confidence
 - Ask follow-up questions to check understanding
-- Adapt your language to the student's level
 - Use markdown: headers, bullet points, numbered steps, code blocks
 - Keep responses engaging, structured, and concise
 Always be warm, encouraging, and positive!`;
+};
 
 export default function AITutor() {
   const { user } = useOutletContext();
@@ -54,6 +66,7 @@ export default function AITutor() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [level, setLevel] = useState('secondary');
   const bottomRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
@@ -66,7 +79,7 @@ export default function AITutor() {
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
     const history = messages.slice(-8).map(m => `${m.role === 'user' ? 'Student' : 'EduBot'}: ${m.content}`).join('\n');
-    const prompt = `${SYSTEM_PROMPT}\n\nConversation:\n${history}\n\nStudent: ${userText}\n\nEduBot:`;
+    const prompt = `${buildSystemPrompt(level)}\n\nConversation:\n${history}\n\nStudent: ${userText}\n\nEduBot:`;
     const response = await base44.integrations.Core.InvokeLLM({ prompt, model: 'claude_sonnet_4_6' });
     setMessages(prev => [...prev, { role: 'assistant', content: response, id: Date.now() + 1 }]);
     setLoading(false);
@@ -85,9 +98,24 @@ export default function AITutor() {
           <h1 className="text-2xl font-black">AI Learning System</h1>
           <p className="text-sm text-muted-foreground">Your personal AI-powered study companion</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-xs text-muted-foreground">EduBot Online</span>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-xs text-muted-foreground hidden sm:inline">EduBot Online</span>
+          </div>
+          {/* Education Level Selector */}
+          <div className="relative">
+            <select
+              value={level}
+              onChange={e => { setLevel(e.target.value); setMessages([]); }}
+              className="appearance-none pl-3 pr-8 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {EDUCATION_LEVELS.map(l => (
+                <option key={l.id} value={l.id}>{l.label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -121,7 +149,8 @@ export default function AITutor() {
                     <Sparkles className="w-10 h-10 text-white" />
                   </div>
                   <h2 className="text-xl font-bold mb-2">Hi {user?.full_name?.split(' ')[0] || 'there'}! I'm EduBot 👋</h2>
-                  <p className="text-muted-foreground text-sm max-w-sm mb-6">Ask me anything — math, science, history, essays, coding. I'm here to help you learn!</p>
+                  <p className="text-muted-foreground text-sm max-w-sm mb-1">Ask me anything — math, science, history, essays, coding. I'm here to help you learn!</p>
+                  <p className="text-xs text-primary font-medium mb-6">Tutor level: {EDUCATION_LEVELS.find(l => l.id === level)?.label} · {EDUCATION_LEVELS.find(l => l.id === level)?.desc}</p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-2xl">
                     {QUICK_PROMPTS.map(({ icon: Icon, text, color }) => (
                       <button key={text} onClick={() => sendMessage(text)}
