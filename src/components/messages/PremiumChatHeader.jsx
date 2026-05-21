@@ -38,12 +38,6 @@ export default function PremiumChatHeader({ user, other, onBack }) {
       {/* Right: Actions */}
       <div className="flex items-center gap-1 flex-shrink-0">
         <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-          <Phone className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-          <Video className="w-4 h-4" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
           <MoreVertical className="w-4 h-4" />
         </Button>
       </div>

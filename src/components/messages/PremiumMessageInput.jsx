@@ -69,7 +69,9 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
           <textarea
             ref={handleTextareaRef}
             value={value}
-            onChange={onChange}
+            onChange={(e) => {
+              onChange(e);
+            }}
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder="Message..."
@@ -80,6 +82,10 @@ export default function PremiumMessageInput({ value, onChange, onSubmit, disable
             )}
             rows={1}
             style={{ maxHeight: '100px' }}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck="false"
           />
         </div>
 
