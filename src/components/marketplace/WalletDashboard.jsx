@@ -196,9 +196,23 @@ export default function WalletDashboard({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Handle redirect back from Paystack
+  // Handle redirect back from Paystack and auto-refresh
   const params = new URLSearchParams(window.location.search);
   const walletStatus = params.get('wallet');
+
+  useEffect(() => {
+    if (walletStatus === 'funded') {
+      // Wait a moment then refresh wallet data
+      const timer = setTimeout(() => {
+        load();
+        // Clean up URL
+        const newParams = new URLSearchParams(window.location.search);
+        newParams.delete('wallet');
+        window.history.replaceState({}, '', `${window.location.pathname}?${newParams.toString()}`);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [walletStatus, load]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 

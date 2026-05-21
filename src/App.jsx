@@ -22,7 +22,6 @@ import Communities from '@/pages/Communities';
 import CommunityDetail from '@/pages/CommunityDetail';
 import Marketplace from '@/pages/Marketplace';
 import AITutor from '@/pages/AITutor';
-import Messages from '@/pages/Messages';
 import Notifications from '@/pages/Notifications';
 import Profile from '@/pages/Profile';
 import Leaderboard from '@/pages/Leaderboard';
@@ -83,7 +82,6 @@ const AuthenticatedApp = () => {
           <Route path="/communities/:id" element={<CommunityDetail />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/ai-tutor" element={<AITutor />} />
-          <Route path="/messages" element={<Messages />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/profile/:email" element={<Profile />} />
           <Route path="/leaderboard" element={<Leaderboard />} />

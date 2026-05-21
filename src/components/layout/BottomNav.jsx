@@ -3,14 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Play, Bot, ShoppingBag, MessageCircle, User } from 'lucide-react';
+import { Home, Play, Bot, ShoppingBag, User } from 'lucide-react';
 
 const NAV_ITEMS = [
   { icon: Home,         label: 'Home',      path: '/' },
   { icon: Play,         label: 'Reels',     path: '/reels' },
   { icon: Bot,          label: 'AI',        path: '/ai-tutor', highlight: true },
   { icon: ShoppingBag,  label: 'Market',    path: '/marketplace' },
-  { icon: MessageCircle,label: 'Messages',  path: '/messages', badge: true },
+  { icon: User,         label: 'Profile',   path: `/profile/${typeof window !== 'undefined' ? window.__CURRENT_USER_EMAIL__ || 'me' : 'me'}` },
 ];
 
 export default function BottomNav({ user, hidden = false }) {
@@ -19,18 +19,11 @@ export default function BottomNav({ user, hidden = false }) {
 
   useEffect(() => {
     if (!user?.email) return;
-    // Count unread message notifications
-    base44.entities.Notification.filter({ user_email: user.email, type: 'message', is_read: false })
-      .then(n => setUnread(n.length)).catch(() => {});
-
-    // Also subscribe to new notifications in real-time
-    const unsub = base44.entities.Notification.subscribe((event) => {
-      if (event.type === 'create' && event.data?.user_email === user.email && event.data?.type === 'message') {
-        setUnread(prev => prev + 1);
-      }
-    });
-    return unsub;
-  }, [user?.email, location.pathname]);
+    // Set global user email for profile link
+    if (typeof window !== 'undefined') {
+      window.__CURRENT_USER_EMAIL__ = user.email;
+    }
+  }, [user?.email]);
 
   return (
     <nav
@@ -91,11 +84,6 @@ export default function BottomNav({ user, hidden = false }) {
                       'w-4 h-4 transition-all duration-200',
                       active ? 'text-primary stroke-[2.5]' : 'text-muted-foreground'
                     )} />
-                    {item.badge && unread > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[14px] h-3.5 px-0.5 bg-destructive rounded-full text-[8px] text-white flex items-center justify-center font-bold leading-none">
-                        {unread > 9 ? '9+' : unread}
-                      </span>
-                    )}
                   </div>
                 )}
 
