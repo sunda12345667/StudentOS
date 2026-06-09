@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import StatCard from '@/components/admin/StatCard';
 import {
+  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+} from 'recharts';
+import {
   DollarSign, Percent, ShoppingCart, Megaphone, Building2,
   TrendingUp, Users, Activity,
   Wallet, School, ShoppingBag, FileText
@@ -45,11 +48,20 @@ export default function AdminOverview() {
   const totalSpent = wallets.reduce((s, w) => s + (w.total_spent || 0), 0);
   const totalEarned = wallets.reduce((s, w) => s + (w.total_earned || 0), 0);
 
-  const pieData = [
-    { name: 'Commission', value: totalCommission },
-    { name: 'Ad Revenue', value: adRevenue },
-    { name: 'Wallet Funding', value: totalFunded },
-  ];
+  // Build last-7-days chart data
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    const label = d.toLocaleDateString('en', { weekday: 'short' });
+    const dateStr = d.toISOString().slice(0, 10);
+    const newUsers = users.filter(u => u.created_date?.slice(0, 10) === dateStr).length;
+    const newPosts = posts.filter(p => p.created_date?.slice(0, 10) === dateStr).length;
+    return { day: label, Users: newUsers, Posts: newPosts };
+  });
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const activeUsersToday = users.filter(u => u.updated_date?.slice(0, 10) === todayStr).length;
+  const postsToday = posts.filter(p => p.created_date?.slice(0, 10) === todayStr).length;
 
   if (loading) {
     return (
@@ -99,6 +111,62 @@ export default function AdminOverview() {
           <div className="text-center p-4 rounded-xl bg-muted/50">
             <p className="text-xs text-muted-foreground mb-1">Total Sales</p>
             <p className="text-2xl font-black text-blue-600">₦{totalSales.toLocaleString()}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Activity Charts */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Active Users Chart */}
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h3 className="font-bold text-sm">New Users (Last 7 Days)</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Active today: <span className="font-bold text-primary">{activeUsersToday}</span></p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center">
+              <Users className="w-4 h-4 text-blue-600" />
+            </div>
+          </div>
+          <div className="h-48 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={last7Days} barSize={20}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12 }}
+                  cursor={{ fill: 'hsl(var(--muted))' }}
+                />
+                <Bar dataKey="Users" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Posts Today Chart */}
+        <div className="rounded-2xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between mb-1">
+            <div>
+              <h3 className="font-bold text-sm">Posts Created (Last 7 Days)</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Posted today: <span className="font-bold text-pink-600">{postsToday}</span></p>
+            </div>
+            <div className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-pink-600" />
+            </div>
+          </div>
+          <div className="h-48 mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={last7Days}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 12, fontSize: 12 }}
+                />
+                <Line type="monotone" dataKey="Posts" stroke="#ec4899" strokeWidth={2.5} dot={{ r: 4, fill: '#ec4899' }} activeDot={{ r: 6 }} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
