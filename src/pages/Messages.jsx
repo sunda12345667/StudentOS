@@ -239,6 +239,7 @@ export default function Messages() {
   };
 
   // ─── Sidebar / List panel ─────────────────────────────────────────────────
+  // NOTE: ListPanel is stable (no selected/messages deps) so inline is fine
   const ListPanel = () => (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -364,80 +365,8 @@ export default function Messages() {
     </div>
   );
 
-  // ─── Chat panel ───────────────────────────────────────────────────────────
-  const DirectChatPanel = () => {
-    if (!selected) {
-      return (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground">
-          <div className="text-center">
-            <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-20" />
-            <p className="font-medium">Select a conversation</p>
-            <p className="text-sm mt-1">or start a new one</p>
-          </div>
-        </div>
-      );
-    }
-    const other = getOther(selected);
-    return (
-      <div className="flex flex-col h-full" style={{ height: '100dvh' }}>
-        <PremiumChatHeader user={user} other={other} onBack={goBack} />
-
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth relative">
-          {msgsLoading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-          ) : messages.length === 0 ? (
-            <EmptyChatState name={other.name} />
-          ) : (
-            <>
-              {messages.map((msg, index) => {
-                const isMine = msg.sender_email === user?.email;
-                const si = msg.sender_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
-                const showAvatar = index === 0 || messages[index - 1]?.sender_email !== msg.sender_email;
-                const timeLabel = new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                
-                return (
-                  <div key={msg.id} className={`flex gap-1.5 items-end ${isMine ? 'justify-end' : 'justify-start'}`}>
-                    {!isMine && showAvatar && (
-                      <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
-                        <AvatarImage src={msg.sender_avatar} />
-                        <AvatarFallback className="gradient-brand text-white text-[10px]">{si}</AvatarFallback>
-                      </Avatar>
-                    )}
-                    {!isMine && !showAvatar && <div className="w-7" />}
-                    <div className="flex flex-col max-w-[75%]">
-                      <div className={cn(
-                        "px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words",
-                        isMine 
-                          ? "gradient-brand text-white rounded-br-sm shadow-md shadow-primary/15" 
-                          : "bg-muted rounded-bl-sm border border-border/30"
-                      )}>
-                        {msg.content}
-                      </div>
-                      <span className={cn(
-                        "text-[10px] mt-0.5 px-1",
-                        isMine ? "text-right text-muted-foreground/60" : "text-muted-foreground/60"
-                      )}>
-                        {timeLabel}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-              <div ref={bottomRef} className="h-1" />
-            </>
-          )}
-        </div>
-
-        <ChatComposer
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onSubmit={sendDM}
-          disabled={sending}
-          inputRef={inputRef}
-        />
-      </div>
-    );
-  };
+  // ─── Chat panel — defined outside render to prevent remount on every keystroke
+  const other = selected ? getOther(selected) : null;
 
   return (
     <div className="flex md:h-[calc(100vh-64px)] h-full overflow-hidden">
@@ -448,8 +377,23 @@ export default function Messages() {
             <ListPanel />
           </div>
         ) : tab === 'direct' ? (
-          <div className="h-full flex flex-col bg-card" style={{ height: '100dvh' }}>
-            <DirectChatPanel />
+          <div className="flex flex-col bg-card" style={{ height: '100dvh' }}>
+            {!selected ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                  <p className="font-medium">Select a conversation</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <PremiumChatHeader user={user} other={other} onBack={goBack} />
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth">
+                  <MessageList messages={messages} msgsLoading={msgsLoading} userEmail={user?.email} otherName={other?.name} bottomRef={bottomRef} />
+                </div>
+                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} />
+              </>
+            )}
           </div>
         ) : (
           <div className="h-full flex flex-col bg-card">
@@ -466,15 +410,28 @@ export default function Messages() {
 
       {/* ── Desktop: split-screen ── */}
       <div className="hidden md:flex w-full h-full">
-        {/* Sidebar */}
         <div className="w-72 flex-shrink-0 border-r border-border bg-card flex flex-col overflow-hidden">
           <ListPanel />
         </div>
-
-        {/* Main panel */}
         <div className="flex-1 flex flex-col overflow-hidden bg-card">
           {tab === 'direct' ? (
-            <DirectChatPanel />
+            !selected ? (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                  <p className="font-medium">Select a conversation</p>
+                  <p className="text-sm mt-1">or start a new one</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col h-full">
+                <PremiumChatHeader user={user} other={other} onBack={goBack} />
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth">
+                  <MessageList messages={messages} msgsLoading={msgsLoading} userEmail={user?.email} otherName={other?.name} bottomRef={bottomRef} />
+                </div>
+                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} />
+              </div>
+            )
           ) : selectedRoom ? (
             <RoomChatWindow room={selectedRoom} currentUser={user} onBack={() => {}} />
           ) : (
@@ -489,5 +446,44 @@ export default function Messages() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Extracted stable component so ChatComposer never remounts on re-render
+function MessageList({ messages, msgsLoading, userEmail, otherName, bottomRef }) {
+  if (msgsLoading) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+  if (messages.length === 0) return <EmptyChatState name={otherName} />;
+  return (
+    <>
+      {messages.map((msg, index) => {
+        const isMine = msg.sender_email === userEmail;
+        const si = msg.sender_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+        const showAvatar = index === 0 || messages[index - 1]?.sender_email !== msg.sender_email;
+        const timeLabel = new Date(msg.created_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return (
+          <div key={msg.id} className={`flex gap-1.5 items-end ${isMine ? 'justify-end' : 'justify-start'}`}>
+            {!isMine && showAvatar && (
+              <Avatar className="h-7 w-7 flex-shrink-0 mb-0.5">
+                <AvatarImage src={msg.sender_avatar} />
+                <AvatarFallback className="gradient-brand text-white text-[10px]">{si}</AvatarFallback>
+              </Avatar>
+            )}
+            {!isMine && !showAvatar && <div className="w-7" />}
+            <div className="flex flex-col max-w-[75%]">
+              <div className={cn(
+                "px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words",
+                isMine ? "gradient-brand text-white rounded-br-sm shadow-md shadow-primary/15" : "bg-muted rounded-bl-sm border border-border/30"
+              )}>
+                {msg.content}
+              </div>
+              <span className={`text-[10px] mt-0.5 px-1 text-muted-foreground/60 ${isMine ? 'text-right' : ''}`}>
+                {timeLabel}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+      <div ref={bottomRef} className="h-1" />
+    </>
   );
 }
