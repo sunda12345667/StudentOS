@@ -15,6 +15,7 @@ const NAV_ITEMS = [
 
 export default function BottomNav({ user, hidden = false }) {
   const location = useLocation();
+  const isMessages = location.pathname.startsWith('/messages');
   const [unread, setUnread] = useState(0);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function BottomNav({ user, hidden = false }) {
       className="fixed bottom-0 left-0 right-0 z-50 flex items-center transition-transform duration-200 md:block keyboard-hide-nav"
       style={{
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 4px)',
-        transform: hidden ? 'translateY(120%)' : 'translateY(0)',
+        transform: hidden || isMessages ? 'translateY(120%)' : 'translateY(0)',
       }}
     >
       {/* Glass container */}
