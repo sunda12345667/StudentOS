@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Send, Plus, Smile, Mic, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function ChatComposer({ value, onChange, onSubmit, disabled, inputRef }) {
+export default function ChatComposer({ value, onChange, onSubmit, disabled, inputRef, onAfterSend }) {
   const textareaRef = useRef(null);
   const hasMessage = value.trim().length > 0;
 
@@ -11,8 +11,12 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
+    // Save cursor position before resize
+    const { selectionStart, selectionEnd } = textarea;
     textarea.style.height = 'auto';
     textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
+    // Restore cursor (prevents focus jump on mobile)
+    textarea.setSelectionRange(selectionStart, selectionEnd);
   }, [value]);
 
   // Stable ref callback — never recreated so textarea never unmounts
@@ -22,6 +26,15 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Called after send — restore focus on mobile without scroll jump
+  const refocusInput = useCallback(() => {
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus({ preventScroll: true });
+    });
+  }, []);
+
   return (
     <div
       className={cn(
@@ -29,7 +42,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
       )}
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
     >
-      <form onSubmit={onSubmit} className="flex items-end gap-2 p-3">
+      <form onSubmit={(e) => { onSubmit(e); refocusInput(); }} className="flex items-end gap-2 p-3">
         <Button
           type="button"
           variant="ghost"

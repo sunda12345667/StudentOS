@@ -159,7 +159,12 @@ export default function Messages() {
     if (!text.trim() || sending) return;
     setSending(true);
     const msgContent = text.trim();
+    // Clear text first so UI feels instant
     setText('');
+    // Re-focus textarea after clearing (keeps mobile keyboard open)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
     const msg = await base44.entities.Message.create({
       conversation_id: selected.id,
       sender_email: user.email,
@@ -168,7 +173,8 @@ export default function Messages() {
       content: msgContent,
       read_by: [user.email],
     });
-    setMessages(p => [...p, msg]);
+    // Only append if subscription didn't already add it
+    setMessages(p => p.find(m => m.id === msg.id) ? p : [...p, msg]);
     setSending(false);
 
     // Update convo

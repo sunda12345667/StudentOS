@@ -7,7 +7,7 @@ import {
 import {
   DollarSign, Percent, ShoppingCart, Megaphone, Building2,
   TrendingUp, Users, Activity,
-  Wallet, School, ShoppingBag, FileText
+  Wallet, School, ShoppingBag, FileText, Globe
 } from 'lucide-react';
 
 
@@ -22,6 +22,7 @@ export default function AdminOverview() {
   const [users, setUsers] = useState([]);
   const [schools, setSchools] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [communities, setCommunities] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -33,8 +34,9 @@ export default function AdminOverview() {
       base44.entities.User.list('-created_date', 200),
       base44.entities.School.list('-created_date', 50),
       base44.entities.Post.list('-created_date', 500),
-    ]).then(([o, a, adv, tx, w, u, s, p]) => {
-      setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w); setUsers(u); setSchools(s); setPosts(p);
+      base44.entities.Community.list('-created_date', 100),
+    ]).then(([o, a, adv, tx, w, u, s, p, c]) => {
+      setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w); setUsers(u); setSchools(s); setPosts(p); setCommunities(c);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -239,6 +241,13 @@ export default function AdminOverview() {
                 <span className="text-sm text-muted-foreground">Total Posts</span>
               </div>
               <span className="text-lg font-bold">{posts.length}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-cyan-600" />
+                <span className="text-sm text-muted-foreground">Communities</span>
+              </div>
+              <span className="text-lg font-bold">{communities.length}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2">
