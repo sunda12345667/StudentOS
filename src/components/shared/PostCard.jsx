@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark, Copy, Repeat2, Flag } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, Bookmark, Copy, Repeat2, Flag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDistanceToNow } from 'date-fns';
@@ -170,68 +170,53 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   return (
     <div className="bg-card lg:rounded-2xl lg:border lg:shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-4 pt-3.5 pb-2 flex items-start justify-between">
-        <div className="flex gap-3">
-          <Link to={`/profile/${post.author_email}`}>
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={post.author_avatar} />
-              <AvatarFallback className="gradient-brand text-white font-bold text-sm">{initials}</AvatarFallback>
-            </Avatar>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Link to={`/profile/${post.author_email}`} className="font-semibold text-sm hover:underline">
+      <div className="px-4 pt-3 pb-2 flex items-start gap-3">
+        <Link to={`/profile/${post.author_email}`} className="flex-shrink-0">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={post.author_avatar} />
+            <AvatarFallback className="gradient-brand text-white font-bold text-sm">{initials}</AvatarFallback>
+          </Avatar>
+        </Link>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-1">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <Link to={`/profile/${post.author_email}`} className="font-bold text-sm hover:underline truncate">
                 {post.author_name}
               </Link>
               {post.author_role && (
-                <Badge className={`text-[10px] px-1.5 py-0 border-0 ${ROLE_COLORS[post.author_role] || ''}`}>
+                <Badge className={`text-[10px] px-1.5 py-0 border-0 flex-shrink-0 ${ROLE_COLORS[post.author_role] || ''}`}>
                   {post.author_role}
                 </Badge>
               )}
+              <span className="text-xs text-muted-foreground flex-shrink-0">· {formatDistanceToNow(new Date(post.created_date), { addSuffix: true })}</span>
             </div>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              <Globe className="w-3 h-3" />
-              <span>{formatDistanceToNow(new Date(post.created_date), { addSuffix: true })}</span>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full flex-shrink-0 -mr-1">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl">
+                {isOwner ? (
+                  <DropdownMenuItem className="text-destructive cursor-pointer"
+                    onClick={() => { base44.entities.Post.delete(post.id); onDelete?.(post.id); }}>
+                    <Trash2 className="w-4 h-4 mr-2" />Delete
+                  </DropdownMenuItem>
+                ) : currentUser && (
+                  <DropdownMenuItem className="cursor-pointer" onClick={() => setShowReport(true)}>
+                    <Flag className="w-4 h-4 mr-2 text-amber-500" />Report Post
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {isOwner && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl">
-                <DropdownMenuItem className="text-destructive cursor-pointer"
-                  onClick={() => { base44.entities.Post.delete(post.id); onDelete?.(post.id); }}>
-                  <Trash2 className="w-4 h-4 mr-2" />Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          {!isOwner && currentUser && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                  <MoreHorizontal className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl">
-                <DropdownMenuItem className="cursor-pointer" onClick={() => setShowReport(true)}>
-                  <Flag className="w-4 h-4 mr-2 text-amber-500" />Report Post
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
         </div>
       </div>
 
       {/* Content — tappable for double-tap like */}
       <div onClick={handleContentTap} className="relative select-none">
         {post.content && (
-          <p className="px-4 pb-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <p className="px-4 pb-2 text-sm leading-relaxed whitespace-pre-wrap pl-[3.75rem]">
             {renderContent(post.content)}
           </p>
         )}
@@ -284,87 +269,54 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
 
       {/* Tags */}
       {post.tags?.length > 0 && (
-        <div className="px-4 pt-1.5 pb-1 flex flex-wrap gap-1">
+        <div className="px-4 pl-[3.75rem] pb-1 flex flex-wrap gap-1">
           {post.tags.map(tag => (
-            <button
-              key={tag}
-              className="text-xs text-primary font-medium hover:underline"
-              onClick={() => onHashtagClick?.(tag)}
-            >
+            <button key={tag} className="text-xs text-primary font-medium hover:underline" onClick={() => onHashtagClick?.(tag)}>
               #{tag}
             </button>
           ))}
         </div>
       )}
 
-      {/* Stats bar */}
-      {(likeCount > 0 || commentCount > 0 || shareCount > 0) && (
-        <div className="px-4 py-1.5 flex justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-3">
-            {likeCount > 0 && (
-              <span className="flex items-center gap-1">
-                <span className="w-4 h-4 rounded-full bg-rose-500 flex items-center justify-center">
-                  <Heart className="w-2.5 h-2.5 text-white fill-white" />
-                </span>
-                {likeCount}
-              </span>
-            )}
-            {shareCount > 0 && <span>{shareCount} shares</span>}
-          </div>
-          {commentCount > 0 && (
-            <button onClick={() => setShowComments(true)} className="hover:underline">
-              {commentCount} comments
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Action bar */}
-      <div className="flex items-center px-1 py-0.5 border-t border-border/60">
-        <Button
-          variant="ghost"
-          className={`flex-1 gap-2 h-10 text-sm font-medium transition-all ${liked ? 'text-rose-500' : 'text-muted-foreground hover:text-rose-500'}`}
-          onClick={doLike}
-        >
-          <Heart className={`w-4 h-4 transition-all duration-200 ${liked ? 'fill-rose-500 scale-110' : ''}`} />
-          <span className="text-xs">{liked ? 'Liked' : 'Like'}{likeCount > 0 ? ` · ${likeCount}` : ''}</span>
-        </Button>
-
-        <Button
-          variant="ghost"
-          className="flex-1 gap-2 h-10 text-sm font-medium text-muted-foreground hover:text-primary"
+      {/* Action bar — Twitter-style icon row aligned under content */}
+      <div className="flex items-center pl-[3.25rem] pr-2 py-1 border-b border-border/40">
+        <button
           onClick={() => setShowComments(!showComments)}
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors p-2 rounded-full hover:bg-primary/5 group"
         >
-          <MessageCircle className="w-4 h-4" />
-          <span className="text-xs">Comment{commentCount > 0 ? ` · ${commentCount}` : ''}</span>
-        </Button>
+          <MessageCircle className="w-[18px] h-[18px] group-hover:scale-110 transition-transform" />
+          {commentCount > 0 && <span className="text-xs">{commentCount}</span>}
+        </button>
 
-        <Button
-          variant="ghost"
-          className="flex-1 gap-2 h-10 text-sm font-medium text-muted-foreground hover:text-primary"
+        <button
           onClick={() => setShowRepost(true)}
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-emerald-500 transition-colors p-2 rounded-full hover:bg-emerald-500/5 group"
         >
-          <Repeat2 className="w-4 h-4" />
-          <span className="text-xs">Repost{shareCount > 0 ? ` · ${shareCount}` : ''}</span>
-        </Button>
+          <Repeat2 className="w-[18px] h-[18px] group-hover:scale-110 transition-transform" />
+          {shareCount > 0 && <span className="text-xs">{shareCount}</span>}
+        </button>
 
-        <Button
-          variant="ghost"
-          className="flex-1 gap-2 h-10 text-sm font-medium text-muted-foreground hover:text-primary"
+        <button
+          onClick={doLike}
+          className={`flex items-center gap-1.5 transition-colors p-2 rounded-full group ${liked ? 'text-rose-500' : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/5'}`}
+        >
+          <Heart className={`w-[18px] h-[18px] group-hover:scale-110 transition-transform ${liked ? 'fill-rose-500 scale-110' : ''}`} />
+          {likeCount > 0 && <span className="text-xs">{likeCount}</span>}
+        </button>
+
+        <button
           onClick={handleShare}
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors p-2 rounded-full hover:bg-primary/5 group ml-auto"
         >
-          <Share2 className="w-4 h-4" />
-          <span className="text-xs">Share</span>
-        </Button>
+          <Share2 className="w-[18px] h-[18px] group-hover:scale-110 transition-transform" />
+        </button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`h-10 w-10 text-muted-foreground ${saved ? 'text-primary' : ''}`}
+        <button
           onClick={() => setSaved(s => !s)}
+          className={`flex items-center gap-1.5 transition-colors p-2 rounded-full group ${saved ? 'text-primary' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'}`}
         >
-          <Bookmark className={`w-4 h-4 ${saved ? 'fill-primary' : ''}`} />
-        </Button>
+          <Bookmark className={`w-[18px] h-[18px] group-hover:scale-110 transition-transform ${saved ? 'fill-primary' : ''}`} />
+        </button>
       </div>
 
       {showComments && (

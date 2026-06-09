@@ -96,8 +96,16 @@ export default function Feed() {
           </div>
         )}
 
+        {/* Feed Filter — full-width tabs on mobile, pill on desktop */}
+        <MobileFeedHeader
+          feedFilter={feedFilter}
+          setFeedFilter={setFeedFilter}
+          activeHashtag={activeHashtag}
+          setActiveHashtag={setActiveHashtag}
+        />
+
         {/* Quick explore strip — mobile only */}
-        <div className="flex gap-2 px-3 pt-3 overflow-x-auto scrollbar-hide lg:hidden">
+        <div className="flex gap-2 px-3 py-2 overflow-x-auto scrollbar-hide lg:hidden border-b border-border/50">
           {[
             { icon: Flame, label: 'Trending', color: 'bg-orange-500/10 text-orange-600', path: '/communities' },
             { icon: Play, label: 'Reels', color: 'bg-rose-500/10 text-rose-600', path: '/reels' },
@@ -105,7 +113,7 @@ export default function Feed() {
             { icon: Sparkles, label: 'AI Tutor', color: 'bg-cyan-500/10 text-cyan-600', path: '/ai-tutor' },
           ].map(item => (
             <Link key={item.path} to={item.path} className="flex-shrink-0">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${item.color} bg-opacity-80`}>
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${item.color}`}>
                 <item.icon className="w-3.5 h-3.5" />
                 {item.label}
               </div>
@@ -113,18 +121,8 @@ export default function Feed() {
           ))}
         </div>
 
-        {/* Feed Filter */}
-        <div className="px-3 pt-2 pb-1 lg:px-0 lg:pt-0 lg:pb-0">
-          <MobileFeedHeader
-            feedFilter={feedFilter}
-            setFeedFilter={setFeedFilter}
-            activeHashtag={activeHashtag}
-            setActiveHashtag={setActiveHashtag}
-          />
-        </div>
-
         {/* Create Post */}
-        <div className="px-3 lg:px-0">
+        <div className="px-4 py-3 lg:px-0 lg:py-0 border-b border-border/50 lg:border-0">
           {user && <CreatePostBox user={user} onPosted={load} />}
         </div>
 
