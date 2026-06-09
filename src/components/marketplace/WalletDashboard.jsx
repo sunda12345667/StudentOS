@@ -24,7 +24,7 @@ const TX_CONFIG = {
 
 const FUND_AMOUNTS = [500, 1000, 2000, 5000, 10000];
 
-function FundModal({ open, onClose, user, onSuccess }) {
+function FundModal({ open, onClose, user }) {
   const [amount, setAmount] = useState('');
   const [custom, setCustom] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,12 +42,10 @@ function FundModal({ open, onClose, user, onSuccess }) {
     setLoading(true);
     try {
       const origin = window.location.origin;
-      const res = await base44.functions.invoke('stripeWalletTopUp', {
+      const res = await base44.functions.invoke('paystackWalletTopUp', {
         amount: finalAmount,
         success_url: `${origin}/marketplace?wallet=funded`,
         cancel_url: `${origin}/marketplace?wallet=cancelled`,
-        user_email: user?.email,
-        user_name: user?.full_name,
       });
 
       if (res.data?.url) {
@@ -67,7 +65,7 @@ function FundModal({ open, onClose, user, onSuccess }) {
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Wallet className="w-5 h-5 text-primary" />Fund Wallet</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
-          <p className="text-sm text-muted-foreground">Select or enter an amount. You'll be redirected to Stripe to complete payment securely.</p>
+          <p className="text-sm text-muted-foreground">Select or enter an amount. You'll be redirected to Paystack to complete payment securely.</p>
 
           <div className="grid grid-cols-3 gap-2">
             {FUND_AMOUNTS.map(a => (
@@ -92,15 +90,15 @@ function FundModal({ open, onClose, user, onSuccess }) {
 
           {finalAmount > 0 && (
             <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center font-semibold">
-              Pay ₦{finalAmount.toLocaleString()} via Stripe
+              Pay ₦{finalAmount.toLocaleString()} via Paystack
             </div>
           )}
 
           <Button onClick={handleFund} disabled={loading || !finalAmount} className="w-full gradient-brand border-0 gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-            {loading ? 'Redirecting to Stripe...' : 'Pay with Stripe'}
+            {loading ? 'Redirecting to Paystack...' : 'Pay with Paystack'}
           </Button>
-          <p className="text-[10px] text-muted-foreground text-center">Secured by Stripe. Your balance updates automatically after payment.</p>
+          <p className="text-[10px] text-muted-foreground text-center">Secured by Paystack • Cards, Bank Transfer, USSD supported</p>
         </div>
       </DialogContent>
     </Dialog>
@@ -198,23 +196,49 @@ export default function WalletDashboard({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Handle redirect back from Paystack and auto-refresh
+  // Handle redirect back from Paystack — poll until balance increases (webhook may be slightly delayed)
   const params = new URLSearchParams(window.location.search);
   const walletStatus = params.get('wallet');
 
   useEffect(() => {
-    if (walletStatus === 'funded') {
-      // Wait a moment then refresh wallet data
-      const timer = setTimeout(() => {
+    if (walletStatus !== 'funded' || !user?.email) return;
+
+    // Clean up URL immediately
+    const newParams = new URLSearchParams(window.location.search);
+    newParams.delete('wallet');
+    const newSearch = newParams.toString();
+    window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? '?' + newSearch : ''}`);
+
+    let attempts = 0;
+    const maxAttempts = 10; // poll up to 10 times (20 seconds total)
+    let previousBalance = null;
+
+    const poll = async () => {
+      attempts++;
+      const wallets = await base44.entities.Wallet.filter({ user_email: user.email });
+      const w = wallets[0];
+      const currentBalance = w?.balance || 0;
+
+      if (previousBalance === null) {
+        previousBalance = currentBalance;
+      }
+
+      if (currentBalance > previousBalance || attempts >= maxAttempts) {
+        // Balance updated (or max attempts reached) — do a full reload
         load();
-        // Clean up URL
-        const newParams = new URLSearchParams(window.location.search);
-        newParams.delete('wallet');
-        window.history.replaceState({}, '', `${window.location.pathname}?${newParams.toString()}`);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [walletStatus, load]);
+        if (currentBalance > previousBalance) {
+          toast.success('Wallet funded successfully! 🎉');
+        }
+      } else {
+        // Keep polling every 2 seconds
+        setTimeout(poll, 2000);
+      }
+    };
+
+    // Start polling after 2 second initial delay
+    const initial = setTimeout(poll, 2000);
+    return () => clearTimeout(initial);
+  }, [walletStatus, user?.email, load]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 
@@ -230,7 +254,7 @@ export default function WalletDashboard({ user }) {
       {walletStatus === 'funded' && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
           <CreditCard className="w-4 h-4 flex-shrink-0" />
-          Payment successful! Your balance will update shortly after Stripe confirms.
+          Payment successful! Verifying with Paystack — your balance will update in a moment...
         </div>
       )}
       {walletStatus === 'cancelled' && (
