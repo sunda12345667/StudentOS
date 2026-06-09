@@ -220,9 +220,10 @@ export default function WalletDashboard({ user }) {
     return unsub;
   }, [user?.email]);
 
-  // Handle redirect back from Paystack — poll until balance increases (webhook may be slightly delayed)
+  // Handle redirect back from Paystack — verify + credit immediately, then poll as fallback
   const params = new URLSearchParams(window.location.search);
   const walletStatus = params.get('wallet');
+  const paystackRef = params.get('reference') || params.get('trxref');
 
   useEffect(() => {
     if (walletStatus !== 'funded' || !user?.email) return;
@@ -230,13 +231,30 @@ export default function WalletDashboard({ user }) {
     // Clean up URL immediately
     const newParams = new URLSearchParams(window.location.search);
     newParams.delete('wallet');
+    newParams.delete('reference');
+    newParams.delete('trxref');
     const newSearch = newParams.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? '?' + newSearch : ''}`);
 
-    // Capture the balance at the moment the user returned from Paystack
+    // Step 1: If Paystack gave us a reference, verify & credit immediately via backend
+    const verifyAndCredit = async () => {
+      if (paystackRef) {
+        try {
+          const res = await base44.functions.invoke('paystackWebhookVerify', { reference: paystackRef, user_email: user.email, user_name: user.full_name });
+          if (res.data?.credited) {
+            await load();
+            toast.success('Wallet funded successfully! 🎉');
+            return true;
+          }
+        } catch (_) { /* fall through to polling */ }
+      }
+      return false;
+    };
+
+    // Step 2: Poll for webhook-triggered balance change as fallback
     let baselineBalance = null;
     let attempts = 0;
-    const maxAttempts = 12; // poll up to 12 times (24 seconds)
+    const maxAttempts = 12;
     let timerId;
 
     const poll = async () => {
@@ -245,28 +263,23 @@ export default function WalletDashboard({ user }) {
       const w = wallets[0];
       const currentBalance = w?.balance || 0;
 
-      // Set baseline on first poll
-      if (baselineBalance === null) {
-        baselineBalance = currentBalance;
-      }
+      if (baselineBalance === null) baselineBalance = currentBalance;
 
       if (currentBalance > baselineBalance) {
-        // Balance increased — webhook was processed
         setWallet(w);
-        load(); // also refresh transactions
+        await load();
         toast.success('Wallet funded successfully! 🎉');
       } else if (attempts < maxAttempts) {
-        // Keep polling every 2 seconds
         timerId = setTimeout(poll, 2000);
       } else {
-        // Max attempts — do a final full reload anyway
-        load();
-        toast.info('Payment received. If balance does not update, please refresh.');
+        await load();
       }
     };
 
-    // Start polling after 1.5s to give webhook time to arrive
-    timerId = setTimeout(poll, 1500);
+    verifyAndCredit().then(credited => {
+      if (!credited) timerId = setTimeout(poll, 1500);
+    });
+
     return () => clearTimeout(timerId);
   }, [walletStatus, user?.email, load]);
 
