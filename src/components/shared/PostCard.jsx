@@ -5,8 +5,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark, Copy, Repeat2 } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark, Copy, Repeat2, Flag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -30,6 +31,10 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const [heartAnim, setHeartAnim] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showRepost, setShowRepost] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reporting, setReporting] = useState(false);
   const [repostComment, setRepostComment] = useState('');
   const [reposting, setReposting] = useState(false);
   const lastTap = useRef(0);
@@ -101,6 +106,27 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
       }
     }
     lastTap.current = now;
+  };
+
+  const doReport = async () => {
+    if (!reportReason || !currentUser) return;
+    setReporting(true);
+    await base44.entities.PostReport.create({
+      post_id: post.id,
+      post_content: post.content?.slice(0, 500) || '',
+      post_author_email: post.author_email,
+      post_author_name: post.author_name,
+      reporter_email: currentUser.email,
+      reporter_name: currentUser.full_name,
+      reason: reportReason,
+      details: reportDetails,
+      status: 'pending',
+    });
+    toast.success('Report submitted. Our team will review it.');
+    setShowReport(false);
+    setReportReason('');
+    setReportDetails('');
+    setReporting(false);
   };
 
   const handleShare = () => setShowShare(true);
@@ -181,6 +207,20 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
                 <DropdownMenuItem className="text-destructive cursor-pointer"
                   onClick={() => { base44.entities.Post.delete(post.id); onDelete?.(post.id); }}>
                   <Trash2 className="w-4 h-4 mr-2" />Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {!isOwner && currentUser && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="rounded-xl">
+                <DropdownMenuItem className="cursor-pointer" onClick={() => setShowReport(true)}>
+                  <Flag className="w-4 h-4 mr-2 text-amber-500" />Report Post
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -363,6 +403,54 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
               >
                 {reposting ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Repeat2 className="w-4 h-4" />}
                 Repost
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Report Modal */}
+      <Dialog open={showReport} onOpenChange={setShowReport}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Flag className="w-4 h-4 text-amber-500" />Report Post
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-1">
+            <div className="rounded-xl bg-muted/60 border p-3 text-sm text-muted-foreground">
+              <p className="line-clamp-2">{post.content}</p>
+            </div>
+            <Select value={reportReason} onValueChange={setReportReason}>
+              <SelectTrigger className="rounded-xl">
+                <SelectValue placeholder="Select a reason *" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="spam">Spam</SelectItem>
+                <SelectItem value="harassment">Harassment</SelectItem>
+                <SelectItem value="hate_speech">Hate Speech</SelectItem>
+                <SelectItem value="misinformation">Misinformation</SelectItem>
+                <SelectItem value="inappropriate_content">Inappropriate Content</SelectItem>
+                <SelectItem value="violence">Violence</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Textarea
+              placeholder="Additional details (optional)..."
+              value={reportDetails}
+              onChange={e => setReportDetails(e.target.value)}
+              rows={2}
+              className="resize-none rounded-xl text-sm"
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowReport(false)}>Cancel</Button>
+              <Button
+                className="flex-1 bg-amber-500 hover:bg-amber-600 border-0 rounded-xl gap-2 text-white"
+                onClick={doReport}
+                disabled={reporting || !reportReason}
+              >
+                {reporting ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Flag className="w-4 h-4" />}
+                Submit Report
               </Button>
             </div>
           </div>

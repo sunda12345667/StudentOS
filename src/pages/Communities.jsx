@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Search, Lock, Globe, Loader2, Flame } from 'lucide-react';
+import { Users, Plus, Search, Lock, Globe, Loader2, TrendingUp, Sparkles, UserCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const CAT_ICONS = { subject: '📚', club: '🎭', sports: '⚽', arts: '🎨', science: '🔬', technology: '💻', language: '🌍', general: '💬' };
@@ -55,16 +55,39 @@ export default function Communities() {
     (filter === 'all' || c.category === filter || (filter === 'mine' && c.member_emails?.includes(user?.email)))
   );
 
+  const joinedCount = communities.filter(c => c.member_emails?.includes(user?.email)).length;
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-black">Communities</h1>
-          <p className="text-muted-foreground mt-1">Find your tribe, learn together</p>
-        </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+      {/* Discovery Hero */}
+      <div className="relative rounded-3xl overflow-hidden mb-8 bg-gradient-to-br from-primary via-accent to-purple-700 p-6 sm:p-8 text-white">
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-5 h-5 text-yellow-300" />
+              <span className="text-white/70 text-sm font-semibold uppercase tracking-widest">Discover</span>
+            </div>
+            <h1 className="text-3xl sm:text-4xl font-black leading-tight">Find Your Community</h1>
+            <p className="text-white/70 mt-2 text-sm max-w-md">Join groups, share knowledge, and connect with students who share your interests.</p>
+            <div className="flex items-center gap-6 mt-4">
+              <div className="text-center">
+                <p className="text-2xl font-black">{communities.length}</p>
+                <p className="text-white/60 text-xs">Communities</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black">{communities.reduce((s, c) => s + (c.member_count || 0), 0).toLocaleString()}</p>
+                <p className="text-white/60 text-xs">Members</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-black">{joinedCount}</p>
+                <p className="text-white/60 text-xs">Joined</p>
+              </div>
+            </div>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button className="gradient-brand border-0 gap-2"><Plus className="w-4 h-4" />Create Community</Button>
+            <Button className="bg-white text-primary hover:bg-white/90 border-0 gap-2 font-semibold shadow-lg"><Plus className="w-4 h-4" />Create Community</Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Create a Community</DialogTitle></DialogHeader>
@@ -87,6 +110,7 @@ export default function Communities() {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -130,11 +154,18 @@ export default function Communities() {
                         <Users className="w-3.5 h-3.5" />{c.member_count || 0} members
                       </div>
                       {isMember ? (
-                        <Link to={`/communities/${c.id}`}>
-                          <Button size="sm" variant="secondary" className="h-7 text-xs">View</Button>
-                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                            <UserCheck className="w-3.5 h-3.5" />Joined
+                          </span>
+                          <Link to={`/communities/${c.id}`}>
+                            <Button size="sm" variant="secondary" className="h-7 text-xs">View</Button>
+                          </Link>
+                        </div>
                       ) : (
-                        <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(c)}>Join</Button>
+                        <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(c)}>
+                          <Plus className="w-3 h-3 mr-1" />Join
+                        </Button>
                       )}
                     </div>
                   </div>

@@ -1,0 +1,58 @@
+{
+  "name": "PostReport",
+  "type": "object",
+  "properties": {
+    "post_id": {
+      "type": "string"
+    },
+    "post_content": {
+      "type": "string"
+    },
+    "post_author_email": {
+      "type": "string"
+    },
+    "post_author_name": {
+      "type": "string"
+    },
+    "reporter_email": {
+      "type": "string"
+    },
+    "reporter_name": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "spam",
+        "harassment",
+        "hate_speech",
+        "misinformation",
+        "inappropriate_content",
+        "violence",
+        "other"
+      ],
+      "default": "other"
+    },
+    "details": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "reviewed",
+        "removed",
+        "dismissed"
+      ],
+      "default": "pending"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "post_id",
+    "reporter_email",
+    "reason"
+  ]
+}

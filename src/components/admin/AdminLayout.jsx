@@ -10,6 +10,7 @@ const PAGE_META = {
   '/admin/advertisers':   { title: 'Advertiser Management',   subtitle: 'Companies and brands on the platform' },
   '/admin/wallet':        { title: 'Wallet & Revenue',        subtitle: 'Platform earnings and financial flow' },
   '/admin/analytics':     { title: 'Analytics Center',        subtitle: 'Deep-dive platform insights' },
+  '/admin/reports':       { title: 'Content Reports',         subtitle: 'Review and moderate reported posts' },
   '/admin/notifications': { title: 'Notifications',           subtitle: 'System alerts and updates' },
   '/admin/settings':      { title: 'Platform Settings',       subtitle: 'Configure your platform' },
 };
