@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, Settings, LogOut, User, Moon, Sun, GraduationCap } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Search, Settings, LogOut, User, Moon, Sun, GraduationCap, Bell } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger
@@ -13,9 +14,28 @@ import { useTheme } from '@/lib/ThemeContext';
 
 export default function Topbar({ user, sidebarCollapsed, isMobile }) {
   const [query, setQuery] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const initials = user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+  // Load unread notification count + subscribe to real-time updates
+  useEffect(() => {
+    if (!user?.email) return;
+    base44.entities.Notification.filter({ user_email: user.email, is_read: false }, '-created_date', 99)
+      .then(notifs => setUnreadCount(notifs.length));
+
+    const unsub = base44.entities.Notification.subscribe((event) => {
+      if (event.data?.user_email !== user.email) return;
+      if (event.type === 'create') setUnreadCount(c => c + 1);
+      if (event.type === 'update' && event.data?.is_read) {
+        // re-fetch count to stay accurate
+        base44.entities.Notification.filter({ user_email: user.email, is_read: false }, '-created_date', 99)
+          .then(notifs => setUnreadCount(notifs.length));
+      }
+    });
+    return unsub;
+  }, [user?.email]);
 
   const leftOffset = isMobile ? 0 : sidebarCollapsed ? 64 : 240;
 
@@ -54,6 +74,18 @@ export default function Topbar({ user, sidebarCollapsed, isMobile }) {
         {/* Search icon on mobile */}
         <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 sm:hidden">
           <Search className="w-4 h-4" />
+        </Button>
+
+        {/* Notification bell */}
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 relative" asChild>
+          <Link to="/notifications">
+            <Bell className="w-4 h-4" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] gradient-brand text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 leading-none">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </Link>
         </Button>
 
         <Button variant="ghost" size="icon" onClick={toggleTheme} className="rounded-full h-9 w-9">

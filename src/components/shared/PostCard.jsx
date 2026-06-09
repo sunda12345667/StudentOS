@@ -4,7 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark, Copy, Facebook, Twitter, X as XIcon } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Globe, Trash2, Bookmark, Copy, Repeat2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +29,9 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const [saved, setSaved] = useState(false);
   const [heartAnim, setHeartAnim] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showRepost, setShowRepost] = useState(false);
+  const [repostComment, setRepostComment] = useState('');
+  const [reposting, setReposting] = useState(false);
   const lastTap = useRef(0);
   const isOwner = post.author_email === currentUser?.email;
   const initials = post.author_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
@@ -35,13 +39,55 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const doLike = async () => {
     if (!currentUser) return;
     const currentLikes = post.likes || [];
-    const newLikes = liked
+    const wasLiked = liked;
+    const newLikes = wasLiked
       ? currentLikes.filter(e => e !== currentUser.email)
       : [...currentLikes, currentUser.email];
-    setLiked(!liked);
+    setLiked(!wasLiked);
     setLikeCount(newLikes.length);
     post.likes = newLikes;
     await base44.entities.Post.update(post.id, { likes: newLikes, like_count: newLikes.length });
+    // Notify post author when liked (not for own posts)
+    if (!wasLiked && post.author_email && post.author_email !== currentUser.email) {
+      base44.entities.Notification.create({
+        user_email: post.author_email,
+        from_name: currentUser.full_name,
+        from_avatar: currentUser.avatar_url || '',
+        from_email: currentUser.email,
+        type: 'like',
+        content: 'liked your post',
+        entity_type: 'post',
+        entity_id: post.id,
+        is_read: false,
+      }).catch(() => {});
+    }
+  };
+
+  const doRepost = async () => {
+    if (!currentUser) return;
+    setReposting(true);
+    const content = repostComment
+      ? `${repostComment}\n\n📢 Reposted from @${post.author_name}:\n"${post.content?.slice(0, 200)}${post.content?.length > 200 ? '...' : ''}"`
+      : `📢 Reposted from @${post.author_name}:\n"${post.content?.slice(0, 200)}${post.content?.length > 200 ? '...' : ''}"`;
+    await base44.entities.Post.create({
+      content,
+      image_url: post.image_url || '',
+      author_name: currentUser.full_name,
+      author_email: currentUser.email,
+      author_avatar: currentUser.avatar_url || '',
+      author_role: currentUser.role || 'student',
+      likes: [],
+      like_count: 0,
+      comment_count: 0,
+      share_count: 0,
+    });
+    const newCount = shareCount + 1;
+    setShareCount(newCount);
+    await base44.entities.Post.update(post.id, { share_count: newCount });
+    toast.success('Reposted to your feed!');
+    setRepostComment('');
+    setShowRepost(false);
+    setReposting(false);
   };
 
   // Double-tap to like
@@ -256,9 +302,18 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
         <Button
           variant="ghost"
           className="flex-1 gap-2 h-10 text-sm font-medium text-muted-foreground hover:text-primary"
+          onClick={() => setShowRepost(true)}
+        >
+          <Repeat2 className="w-4 h-4" />
+          <span className="text-xs">Repost{shareCount > 0 ? ` · ${shareCount}` : ''}</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          className="flex-1 gap-2 h-10 text-sm font-medium text-muted-foreground hover:text-primary"
           onClick={handleShare}
         >
-          <Share2 className="w-4.5 h-4.5" />
+          <Share2 className="w-4 h-4" />
           <span className="text-xs">Share</span>
         </Button>
 
@@ -277,6 +332,42 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
           <CommentSection postId={post.id} currentUser={currentUser} onCountChange={c => setCommentCount(c)} />
         </div>
       )}
+
+      {/* Repost Modal */}
+      <Dialog open={showRepost} onOpenChange={setShowRepost}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <Repeat2 className="w-4 h-4 text-primary" />Repost to Your Feed
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-1">
+            {/* Original post preview */}
+            <div className="rounded-xl bg-muted/60 border p-3 text-sm text-muted-foreground">
+              <p className="font-medium text-foreground text-xs mb-1">{post.author_name}</p>
+              <p className="line-clamp-3">{post.content}</p>
+            </div>
+            <Textarea
+              placeholder="Add a comment (optional)..."
+              value={repostComment}
+              onChange={e => setRepostComment(e.target.value)}
+              rows={3}
+              className="resize-none bg-muted border-0 rounded-xl text-sm"
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setShowRepost(false)}>Cancel</Button>
+              <Button
+                className="flex-1 gradient-brand border-0 rounded-xl gap-2"
+                onClick={doRepost}
+                disabled={reposting}
+              >
+                {reposting ? <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> : <Repeat2 className="w-4 h-4" />}
+                Repost
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Share Modal */}
       <Dialog open={showShare} onOpenChange={setShowShare}>

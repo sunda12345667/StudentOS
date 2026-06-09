@@ -40,6 +40,18 @@ export default function FollowButton({ currentUser, targetEmail, targetName, tar
       setFollowing(true);
       setFollowRecord(rec);
       setCount(c => c + 1);
+      // Notify the user being followed
+      base44.entities.Notification.create({
+        user_email: targetEmail,
+        from_name: currentUser.full_name,
+        from_avatar: currentUser.avatar_url || '',
+        from_email: currentUser.email,
+        type: 'follow',
+        content: 'started following you',
+        entity_type: 'user',
+        entity_id: currentUser.email,
+        is_read: false,
+      }).catch(() => {});
     }
     setLoading(false);
   };
