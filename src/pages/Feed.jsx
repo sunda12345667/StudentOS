@@ -3,7 +3,7 @@ import { useOutletContext, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, Play, Trophy, BookOpen, Flame, Users } from 'lucide-react';
+import { Loader2, Sparkles, Play, Trophy, BookOpen, Flame, Users, GraduationCap } from 'lucide-react';
 import { motion } from 'framer-motion';
 import CreatePostBox from '@/components/shared/CreatePostBox';
 import PostCard from '@/components/shared/PostCard';
@@ -87,12 +87,10 @@ export default function Feed() {
       {/* ── CENTER FEED ── */}
       <div className="lg:col-span-2 space-y-0 lg:space-y-4">
 
-        {/* Stories — edge-to-edge on mobile */}
+        {/* Stories */}
         {user && (
-          <div className="lg:rounded-2xl lg:overflow-hidden">
-            <div className="bg-card lg:rounded-2xl px-4 py-3 border-b border-border lg:border lg:shadow-sm">
-              <StoriesBar user={user} />
-            </div>
+          <div className="px-4 pt-3 pb-0 lg:rounded-2xl lg:bg-card/80 lg:backdrop-blur-md lg:border lg:border-white/5 lg:shadow-sm lg:px-4 lg:py-3 border-b border-white/5 lg:border">
+            <StoriesBar user={user} />
           </div>
         )}
 
@@ -104,17 +102,19 @@ export default function Feed() {
           setActiveHashtag={setActiveHashtag}
         />
 
-        {/* Quick explore strip — mobile only */}
-        <div className="flex gap-2 px-3 py-2 overflow-x-auto scrollbar-hide lg:hidden border-b border-border/50">
+        {/* Secondary nav strip */}
+        <div className="flex gap-2 px-4 py-2.5 overflow-x-auto scrollbar-hide border-b border-white/5">
           {[
-            { icon: Flame, label: 'Trending', color: 'bg-orange-500/10 text-orange-600', path: '/communities' },
-            { icon: Play, label: 'Reels', color: 'bg-rose-500/10 text-rose-600', path: '/reels' },
-            { icon: Trophy, label: 'Ranks', color: 'bg-amber-500/10 text-amber-600', path: '/leaderboard' },
-            { icon: Sparkles, label: 'AI Tutor', color: 'bg-cyan-500/10 text-cyan-600', path: '/ai-tutor' },
+            { icon: Flame,    label: 'Trending',   color: 'bg-orange-500/15 text-orange-400 border-orange-500/20', path: '/communities' },
+            { icon: Play,     label: 'Reels',      color: 'bg-rose-500/15 text-rose-400 border-rose-500/20',       path: '/reels' },
+            { icon: Trophy,   label: 'Rankings',   color: 'bg-amber-500/15 text-amber-400 border-amber-500/20',    path: '/leaderboard' },
+            { icon: Sparkles, label: 'AI Tutor',   color: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20',       path: '/ai-tutor' },
+            { icon: Users,    label: 'Groups',     color: 'bg-violet-500/15 text-violet-400 border-violet-500/20', path: '/campus' },
+            { icon: BookOpen, label: 'Marketplace',color: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20', path: '/marketplace' },
           ].map(item => (
             <Link key={item.path} to={item.path} className="flex-shrink-0">
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold ${item.color}`}>
-                <item.icon className="w-3.5 h-3.5" />
+              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${item.color}`}>
+                <item.icon className="w-3 h-3" />
                 {item.label}
               </div>
             </Link>

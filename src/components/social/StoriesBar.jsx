@@ -82,45 +82,39 @@ export default function StoriesBar({ user }) {
 
   return (
     <>
-      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide -mx-1 px-1">
+      <div className="flex gap-2.5 overflow-x-auto pb-0.5 scrollbar-hide -mx-1 px-1">
         {/* Add Story bubble */}
-        <div
-          className="flex-shrink-0 flex flex-col items-center gap-1.5 cursor-pointer"
-          onClick={() => setAddOpen(true)}
-        >
-          <div className="relative w-[58px] h-[58px]">
-            <div className="w-full h-full rounded-full overflow-hidden ring-2 ring-border">
+        <div className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer" onClick={() => setAddOpen(true)}>
+          <div className="relative w-[50px] h-[50px]">
+            <div className="w-full h-full rounded-full overflow-hidden ring-2 ring-violet-500/40">
               <Avatar className="w-full h-full">
                 <AvatarImage src={user?.avatar_url} />
-                <AvatarFallback className="gradient-brand text-white font-bold text-lg w-full h-full">
+                <AvatarFallback className="gradient-brand text-white font-bold text-base w-full h-full">
                   {user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'}
                 </AvatarFallback>
               </Avatar>
             </div>
-            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-primary border-2 border-card flex items-center justify-center shadow">
-              <Plus className="w-3 h-3 text-white" />
+            <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] rounded-full bg-violet-500 border-2 border-card flex items-center justify-center shadow">
+              <Plus className="w-2.5 h-2.5 text-white" />
             </div>
           </div>
-          <span className="text-[10px] text-muted-foreground font-medium w-[58px] text-center truncate leading-tight">Your Story</span>
+          <span className="text-[9px] text-muted-foreground font-medium w-[50px] text-center truncate leading-tight">Your Story</span>
         </div>
 
         {/* Story bubbles */}
         {grouped.map((group, i) => {
           const initials = group.author_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
           return (
-            <motion.div
-              key={group.author_email}
-              whileTap={{ scale: 0.92 }}
-              className="flex-shrink-0 flex flex-col items-center gap-1.5 cursor-pointer"
-              onClick={() => openStory(i)}
-            >
-              <div className="w-[58px] h-[58px] rounded-full p-[2.5px] bg-gradient-to-tr from-purple-500 via-pink-500 to-orange-400">
-                <Avatar className="w-full h-full ring-2 ring-card rounded-full">
+            <motion.div key={group.author_email} whileTap={{ scale: 0.9 }}
+              className="flex-shrink-0 flex flex-col items-center gap-1 cursor-pointer"
+              onClick={() => openStory(i)}>
+              <div className="w-[50px] h-[50px] rounded-full p-[2px] bg-gradient-to-tr from-violet-500 via-fuchsia-500 to-pink-500">
+                <Avatar className="w-full h-full ring-[2.5px] ring-card rounded-full">
                   <AvatarImage src={group.author_avatar} />
-                  <AvatarFallback className="gradient-brand text-white font-bold text-sm">{initials}</AvatarFallback>
+                  <AvatarFallback className="gradient-brand text-white font-bold text-xs">{initials}</AvatarFallback>
                 </Avatar>
               </div>
-              <span className="text-[10px] text-muted-foreground w-[58px] text-center truncate leading-tight">
+              <span className="text-[9px] text-muted-foreground w-[50px] text-center truncate leading-tight">
                 {group.author_name?.split(' ')[0]}
               </span>
             </motion.div>
