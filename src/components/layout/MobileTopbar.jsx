@@ -23,10 +23,9 @@ export default function MobileTopbar({ user }) {
   return (
     <header className="fixed top-0 left-0 right-0 z-40 h-14"
       style={{
-        background: 'rgba(var(--background-rgb, 250 251 255) / 0.92)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(var(--border-rgb, 200 210 230) / 0.5)',
+        background: 'transparent',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
       }}
     >
       <AnimatePresence mode="wait">

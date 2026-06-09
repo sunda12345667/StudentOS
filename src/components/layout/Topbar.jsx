@@ -41,7 +41,8 @@ export default function Topbar({ user, sidebarCollapsed, isMobile }) {
 
   return (
     <header
-      className="fixed top-0 right-0 h-14 bg-card/90 backdrop-blur border-b border-border z-30 flex items-center gap-3 px-4 transition-all duration-300"
+      className="fixed top-0 right-0 h-14 z-30 flex items-center gap-3 px-4 transition-all duration-300"
+      style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', background: 'transparent' }}
       style={{ left: leftOffset }}
     >
       {/* Mobile: avatar on left, logo center, settings on right */}

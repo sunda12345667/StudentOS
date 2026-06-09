@@ -37,11 +37,9 @@ export default function BottomNav({ user, hidden = false }) {
       {/* Glass container */}
       <div className="w-full mx-2 mb-0 rounded-xl overflow-hidden"
         style={{
-          background: 'rgba(var(--card-rgb, 255 255 255) / 0.9)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.12), 0 1px 0 rgba(255,255,255,0.1) inset',
-          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'transparent',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
         }}
       >
         <div className="flex items-stretch h-12">
