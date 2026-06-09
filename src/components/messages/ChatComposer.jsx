@@ -1,35 +1,26 @@
-import React, { useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Send, Plus, Smile, Mic, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function ChatComposer({ value, onChange, onSubmit, disabled, inputRef }) {
   const textareaRef = useRef(null);
-  const hasMessage = useMemo(() => value.trim().length > 0, [value]);
+  const hasMessage = value.trim().length > 0;
 
-  // Auto-resize textarea (preserve cursor position)
+  // Auto-resize textarea without touching focus/selection
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
-    
-    const cursorStart = textarea.selectionStart;
-    const cursorEnd = textarea.selectionEnd;
-    
     textarea.style.height = 'auto';
-    const newHeight = Math.min(textarea.scrollHeight, 100);
-    textarea.style.height = newHeight + 'px';
-    
-    textarea.setSelectionRange(cursorStart, cursorEnd);
+    textarea.style.height = Math.min(textarea.scrollHeight, 100) + 'px';
   }, [value]);
 
-  const handleChange = useCallback((e) => {
-    onChange(e);
-  }, [onChange]);
-
+  // Stable ref callback — never recreated so textarea never unmounts
   const handleTextareaRef = useCallback((r) => {
     textareaRef.current = r;
     if (inputRef) inputRef.current = r;
-  }, [inputRef]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
@@ -45,6 +36,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
           size="icon"
           className="h-9 w-9 text-muted-foreground hover:text-primary flex-shrink-0"
           disabled={disabled}
+          onMouseDown={e => e.preventDefault()}
         >
           <Plus className="w-4 h-4" />
         </Button>
@@ -60,7 +52,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
           <textarea
             ref={handleTextareaRef}
             value={value}
-            onChange={handleChange}
+            onChange={onChange}
             placeholder="Message..."
             disabled={disabled}
             className={cn(
@@ -68,14 +60,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
               'placeholder:text-muted-foreground/50 disabled:opacity-50'
             )}
             rows={1}
-            style={{ 
-              maxHeight: '100px',
-              WebkitAppearance: 'none'
-            }}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck="false"
+            style={{ maxHeight: '100px' }}
             inputMode="text"
           />
         </div>
@@ -86,6 +71,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
           size="icon"
           className="h-9 w-9 text-muted-foreground hover:text-primary flex-shrink-0"
           disabled={disabled}
+          onMouseDown={e => e.preventDefault()}
         >
           <Smile className="w-4 h-4" />
         </Button>
@@ -99,6 +85,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
               'hover:shadow-lg hover:shadow-primary/20 active:scale-95'
             )}
             disabled={!hasMessage || disabled}
+            onMouseDown={e => e.preventDefault()}
           >
             {disabled ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -113,6 +100,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
             size="icon"
             className="h-9 w-9 text-muted-foreground hover:text-primary flex-shrink-0"
             disabled={disabled}
+            onMouseDown={e => e.preventDefault()}
           >
             <Mic className="w-4 h-4" />
           </Button>

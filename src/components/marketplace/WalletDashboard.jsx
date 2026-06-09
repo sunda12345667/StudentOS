@@ -196,6 +196,30 @@ export default function WalletDashboard({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Real-time wallet balance updates
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsub = base44.entities.Wallet.subscribe((event) => {
+      if (event.data?.user_email !== user.email) return;
+      if (event.type === 'update' || event.type === 'create') {
+        setWallet(event.data);
+      }
+    });
+    return unsub;
+  }, [user?.email]);
+
+  // Real-time transaction feed
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsub = base44.entities.Transaction.subscribe((event) => {
+      if (event.data?.user_email !== user.email) return;
+      if (event.type === 'create') {
+        setTransactions(prev => [event.data, ...prev]);
+      }
+    });
+    return unsub;
+  }, [user?.email]);
+
   // Handle redirect back from Paystack — poll until balance increases (webhook may be slightly delayed)
   const params = new URLSearchParams(window.location.search);
   const walletStatus = params.get('wallet');

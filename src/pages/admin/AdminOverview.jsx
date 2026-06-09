@@ -3,8 +3,8 @@ import { base44 } from '@/api/base44Client';
 import StatCard from '@/components/admin/StatCard';
 import {
   DollarSign, Percent, ShoppingCart, Megaphone, Building2,
-  TrendingUp, Users, Clock, Activity,
-  Wallet, School, ShoppingBag
+  TrendingUp, Users, Activity,
+  Wallet, School, ShoppingBag, FileText
 } from 'lucide-react';
 
 
@@ -18,6 +18,7 @@ export default function AdminOverview() {
   const [wallets, setWallets] = useState([]);
   const [users, setUsers] = useState([]);
   const [schools, setSchools] = useState([]);
+  const [posts, setPosts] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -28,8 +29,9 @@ export default function AdminOverview() {
       base44.entities.Wallet.list('-created_date', 50),
       base44.entities.User.list('-created_date', 200),
       base44.entities.School.list('-created_date', 50),
-    ]).then(([o, a, adv, tx, w, u, s]) => {
-      setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w); setUsers(u); setSchools(s);
+      base44.entities.Post.list('-created_date', 500),
+    ]).then(([o, a, adv, tx, w, u, s, p]) => {
+      setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w); setUsers(u); setSchools(s); setPosts(p);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -162,6 +164,13 @@ export default function AdminOverview() {
                 <span className="text-sm text-muted-foreground">Active Orders</span>
               </div>
               <span className="text-lg font-bold">{orders.filter(o => o.status !== 'cancelled').length}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-pink-600" />
+                <span className="text-sm text-muted-foreground">Total Posts</span>
+              </div>
+              <span className="text-lg font-bold">{posts.length}</span>
             </div>
             <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2">
