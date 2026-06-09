@@ -24,7 +24,7 @@ const TX_CONFIG = {
 
 const FUND_AMOUNTS = [500, 1000, 2000, 5000, 10000];
 
-function FundModal({ open, onClose }) {
+function FundModal({ open, onClose, user, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [custom, setCustom] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,10 +42,12 @@ function FundModal({ open, onClose }) {
     setLoading(true);
     try {
       const origin = window.location.origin;
-      const res = await base44.functions.invoke('paystackWalletTopUp', {
+      const res = await base44.functions.invoke('stripeWalletTopUp', {
         amount: finalAmount,
         success_url: `${origin}/marketplace?wallet=funded`,
         cancel_url: `${origin}/marketplace?wallet=cancelled`,
+        user_email: user?.email,
+        user_name: user?.full_name,
       });
 
       if (res.data?.url) {
@@ -65,7 +67,7 @@ function FundModal({ open, onClose }) {
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><Wallet className="w-5 h-5 text-primary" />Fund Wallet</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
-          <p className="text-sm text-muted-foreground">Select or enter an amount. You'll be redirected to Paystack to complete payment securely.</p>
+          <p className="text-sm text-muted-foreground">Select or enter an amount. You'll be redirected to Stripe to complete payment securely.</p>
 
           <div className="grid grid-cols-3 gap-2">
             {FUND_AMOUNTS.map(a => (
@@ -90,15 +92,15 @@ function FundModal({ open, onClose }) {
 
           {finalAmount > 0 && (
             <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800 text-center font-semibold">
-              Pay ₦{finalAmount.toLocaleString()} via Paystack
+              Pay ₦{finalAmount.toLocaleString()} via Stripe
             </div>
           )}
 
           <Button onClick={handleFund} disabled={loading || !finalAmount} className="w-full gradient-brand border-0 gap-2">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-            {loading ? 'Redirecting to Paystack...' : 'Pay with Paystack'}
+            {loading ? 'Redirecting to Stripe...' : 'Pay with Stripe'}
           </Button>
-          <p className="text-[10px] text-muted-foreground text-center">Secured by Paystack. Your balance updates automatically after payment.</p>
+          <p className="text-[10px] text-muted-foreground text-center">Secured by Stripe. Your balance updates automatically after payment.</p>
         </div>
       </DialogContent>
     </Dialog>
@@ -228,7 +230,7 @@ export default function WalletDashboard({ user }) {
       {walletStatus === 'funded' && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
           <CreditCard className="w-4 h-4 flex-shrink-0" />
-          Payment successful! Your balance will update shortly after confirmation.
+          Payment successful! Your balance will update shortly after Stripe confirms.
         </div>
       )}
       {walletStatus === 'cancelled' && (
@@ -296,7 +298,7 @@ export default function WalletDashboard({ user }) {
         </CardContent>
       </Card>
 
-      <FundModal open={fundOpen} onClose={() => setFundOpen(false)} />
+      <FundModal open={fundOpen} onClose={() => setFundOpen(false)} user={user} />
       <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} wallet={wallet} onSuccess={w => { setWallet(w); load(); }} />
     </div>
   );

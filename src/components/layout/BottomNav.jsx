@@ -3,14 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Play, Bot, ShoppingBag, User } from 'lucide-react';
+import { Home, Play, Bot, ShoppingBag, MessageCircle } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { icon: Home,         label: 'Home',      path: '/' },
-  { icon: Play,         label: 'Reels',     path: '/reels' },
-  { icon: Bot,          label: 'AI',        path: '/ai-tutor', highlight: true },
-  { icon: ShoppingBag,  label: 'Market',    path: '/marketplace' },
-  { icon: User,         label: 'Profile',   path: `/profile/${typeof window !== 'undefined' ? window.__CURRENT_USER_EMAIL__ || 'me' : 'me'}` },
+  { icon: Home,          label: 'Home',     path: '/' },
+  { icon: Play,          label: 'Reels',    path: '/reels' },
+  { icon: Bot,           label: 'AI',       path: '/ai-tutor', highlight: true },
+  { icon: ShoppingBag,   label: 'Market',   path: '/marketplace' },
+  { icon: MessageCircle, label: 'Messages', path: '/messages' },
 ];
 
 export default function BottomNav({ user, hidden = false }) {

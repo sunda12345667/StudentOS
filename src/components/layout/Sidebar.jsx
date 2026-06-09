@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Home, BookOpen, Users, ShoppingBag, Bot, Bell,
   School, Trophy, ChevronLeft, ChevronRight,
-  GraduationCap, Sparkles, Settings, LogOut, Play, ShieldCheck, CalendarDays
+  GraduationCap, Sparkles, Settings, LogOut, Play, ShieldCheck, CalendarDays, MessageCircle
 } from 'lucide-react';
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { icon: BookOpen,    label: 'Classroom',   path: '/classroom',  color: 'text-green-500' },
   { icon: Users,       label: 'Communities', path: '/communities',color: 'text-amber-500' },
   { icon: ShoppingBag, label: 'Marketplace', path: '/marketplace',color: 'text-rose-500' },
+  { icon: MessageCircle, label: 'Messages',  path: '/messages',   color: 'text-teal-500' },
   { icon: Bot,         label: 'AI Tutor',    path: '/ai-tutor',   color: 'text-cyan-500' },
   { icon: Bell,        label: 'Notifications',path:'/notifications',color:'text-orange-500' },
   { icon: Trophy,      label: 'Leaderboard', path: '/leaderboard',color: 'text-yellow-500' },

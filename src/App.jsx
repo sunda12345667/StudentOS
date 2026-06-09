@@ -15,6 +15,7 @@ import ResetPassword from '@/pages/ResetPassword';
 
 import AppLayout from '@/components/layout/AppLayout';
 import Feed from '@/pages/Feed';
+import Messages from '@/pages/Messages';
 import Schools from '@/pages/Schools';
 import Classroom from '@/pages/Classroom';
 import CourseDetail from '@/pages/CourseDetail';
@@ -89,6 +90,7 @@ const AuthenticatedApp = () => {
           <Route path="/campus" element={<CampusGroups />} />
           <Route path="/campus/:id" element={<CampusGroupDetail />} />
           <Route path="/planner" element={<Planner />} />
+          <Route path="/messages" element={<Messages />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Route>
