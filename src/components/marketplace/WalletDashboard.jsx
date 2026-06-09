@@ -233,9 +233,11 @@ export default function WalletDashboard({ user }) {
     const newSearch = newParams.toString();
     window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? '?' + newSearch : ''}`);
 
+    // Capture the balance at the moment the user returned from Paystack
+    let baselineBalance = null;
     let attempts = 0;
-    const maxAttempts = 10; // poll up to 10 times (20 seconds total)
-    let previousBalance = null;
+    const maxAttempts = 12; // poll up to 12 times (24 seconds)
+    let timerId;
 
     const poll = async () => {
       attempts++;
@@ -243,25 +245,29 @@ export default function WalletDashboard({ user }) {
       const w = wallets[0];
       const currentBalance = w?.balance || 0;
 
-      if (previousBalance === null) {
-        previousBalance = currentBalance;
+      // Set baseline on first poll
+      if (baselineBalance === null) {
+        baselineBalance = currentBalance;
       }
 
-      if (currentBalance > previousBalance || attempts >= maxAttempts) {
-        // Balance updated (or max attempts reached) — do a full reload
-        load();
-        if (currentBalance > previousBalance) {
-          toast.success('Wallet funded successfully! 🎉');
-        }
-      } else {
+      if (currentBalance > baselineBalance) {
+        // Balance increased — webhook was processed
+        setWallet(w);
+        load(); // also refresh transactions
+        toast.success('Wallet funded successfully! 🎉');
+      } else if (attempts < maxAttempts) {
         // Keep polling every 2 seconds
-        setTimeout(poll, 2000);
+        timerId = setTimeout(poll, 2000);
+      } else {
+        // Max attempts — do a final full reload anyway
+        load();
+        toast.info('Payment received. If balance does not update, please refresh.');
       }
     };
 
-    // Start polling after 2 second initial delay
-    const initial = setTimeout(poll, 2000);
-    return () => clearTimeout(initial);
+    // Start polling after 1.5s to give webhook time to arrive
+    timerId = setTimeout(poll, 1500);
+    return () => clearTimeout(timerId);
   }, [walletStatus, user?.email, load]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
