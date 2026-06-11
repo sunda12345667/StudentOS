@@ -24,13 +24,14 @@ export default function AdminOverview() {
   const [posts, setPosts] = useState([]);
   const [communities, setCommunities] = useState([]);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     Promise.all([
       base44.entities.Order.list('-created_date', 100),
       base44.entities.AdCampaign.list('-created_date', 50),
       base44.entities.Advertiser.list('-created_date', 50),
-      base44.entities.Transaction.list('-created_date', 100),
-      base44.entities.Wallet.list('-created_date', 50),
+      base44.entities.Transaction.list('-created_date', 200),
+      base44.entities.Wallet.list('-created_date', 200),
       base44.entities.User.list('-created_date', 200),
       base44.entities.School.list('-created_date', 50),
       base44.entities.Post.list('-created_date', 500),
@@ -39,6 +40,14 @@ export default function AdminOverview() {
       setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w); setUsers(u); setSchools(s); setPosts(p); setCommunities(c);
       setLoading(false);
     }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
+    // Real-time: re-fetch when new transactions or wallets are created/updated
+    const unsubTx = base44.entities.Transaction.subscribe(() => load());
+    const unsubW = base44.entities.Wallet.subscribe(() => load());
+    return () => { unsubTx(); unsubW(); };
   }, []);
 
   const totalSales = orders.reduce((s, o) => s + (o.price || 0), 0);

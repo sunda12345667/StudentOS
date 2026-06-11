@@ -107,24 +107,34 @@ function FundModal({ open, onClose, user }) {
 
 function WithdrawModal({ open, onClose, wallet, onSuccess }) {
   const [amount, setAmount] = useState('');
+  const [bank, setBank] = useState('');
+  const [account, setAccount] = useState('');
+  const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
 
   const withdraw = async () => {
     const amt = Number(amount);
     if (!amt || amt < 100) { toast.error('Minimum withdrawal is ₦100'); return; }
     if (amt > wallet.balance) { toast.error('Insufficient balance'); return; }
+    if (!bank || !account || account.length < 10) { toast.error('Please enter valid bank details'); return; }
     setLoading(true);
-    const updated = await recordTransaction(wallet, {
-      type: 'withdrawal',
-      amount: amt,
-      description: `Withdrawal of ₦${amt.toLocaleString()}`,
-      reference: `WD-${Date.now()}`,
-    });
-    toast.success(`₦${amt.toLocaleString()} withdrawal recorded!`);
-    setLoading(false);
-    onSuccess(updated);
-    onClose();
-    setAmount('');
+    try {
+      const description = `Withdrawal to ${bank} •••• ${account.slice(-4)}${note ? ' — ' + note : ''}`;
+      const updated = await recordTransaction(wallet, {
+        type: 'withdrawal',
+        amount: amt,
+        description,
+        reference: `WD-${Date.now()}`,
+      });
+      toast.success(`₦${amt.toLocaleString()} withdrawal request submitted!`);
+      onSuccess(updated);
+      onClose();
+      setAmount(''); setBank(''); setAccount(''); setNote('');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -137,12 +147,30 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
             <p className="text-2xl font-black text-primary">₦{(wallet?.balance || 0).toLocaleString()}</p>
           </div>
           <div>
-            <label className="text-xs font-medium mb-1 block">Amount to withdraw (₦)</label>
-            <Input type="number" placeholder="Enter amount" value={amount} onChange={e => setAmount(e.target.value)} />
+            <label className="text-xs font-medium mb-1 block">Amount to withdraw (₦) *</label>
+            <Input type="number" placeholder="e.g. 5000" value={amount} onChange={e => setAmount(e.target.value)} />
           </div>
+          <div>
+            <label className="text-xs font-medium mb-1 block">Bank *</label>
+            <select value={bank} onChange={e => setBank(e.target.value)} className="w-full bg-background border border-input text-foreground text-sm rounded-md px-3 py-2">
+              <option value="">Select bank...</option>
+              {['GTBank','Zenith Bank','Access Bank','First Bank','UBA','Fidelity Bank','FCMB','Stanbic IBTC','Polaris Bank','Keystone Bank'].map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium mb-1 block">Account Number *</label>
+            <Input type="text" placeholder="10-digit account number" maxLength={10} value={account} onChange={e => setAccount(e.target.value.replace(/\D/g, ''))} className="font-mono" />
+          </div>
+          <div>
+            <label className="text-xs font-medium mb-1 block">Note (optional)</label>
+            <Input placeholder="Reason..." value={note} onChange={e => setNote(e.target.value)} />
+          </div>
+          <p className="text-xs text-muted-foreground text-center">Withdrawals are processed within 1–3 business days.</p>
           <Button onClick={withdraw} disabled={loading || !amount} className="w-full gap-2 bg-violet-600 hover:bg-violet-700 border-0 text-white">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Minus className="w-4 h-4" />}
-            Withdraw
+            {loading ? 'Submitting...' : 'Submit Withdrawal'}
           </Button>
         </div>
       </DialogContent>
