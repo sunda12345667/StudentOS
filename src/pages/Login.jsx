@@ -183,7 +183,7 @@ export default function Login() {
 
           {/* Trust */}
           <p className="text-center text-white/15 text-[10px] mt-6">
-            🔒 Secured with 256-bit encryption · Trusted by 250K+ students
+            🔒 Your data is safe & encrypted
           </p>
         </motion.div>
       </div>
