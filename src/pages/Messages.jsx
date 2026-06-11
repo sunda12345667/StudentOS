@@ -33,6 +33,7 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [msgsLoading, setMsgsLoading] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -57,6 +58,7 @@ export default function Messages() {
   };
 
   const goBack = () => {
+    setInputFocused(false);
     setMobileView('list');
   };
 
@@ -112,27 +114,26 @@ export default function Messages() {
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Keyboard detection for CSS-only nav hiding
+  // Hide topbar/bottomnav when input is focused
   useEffect(() => {
-    const handleKeyboardChange = () => {
-      const isKeyboardOpen = document.activeElement?.tagName === 'TEXTAREA' || 
-                             document.activeElement?.tagName === 'INPUT';
-      if (isKeyboardOpen) {
-        document.body.classList.add('keyboard-open');
-      } else {
-        document.body.classList.remove('keyboard-open');
-      }
-    };
-
-    document.addEventListener('focusin', handleKeyboardChange);
-    document.addEventListener('focusout', handleKeyboardChange);
-    
+    const topbar = document.querySelector('header');
+    if (!topbar) return;
+    if (inputFocused && mobileView === 'chat') {
+      topbar.style.transition = 'opacity 0.15s, transform 0.15s';
+      topbar.style.opacity = '0';
+      topbar.style.pointerEvents = 'none';
+      topbar.style.transform = 'translateY(-100%)';
+    } else {
+      topbar.style.opacity = '1';
+      topbar.style.pointerEvents = '';
+      topbar.style.transform = 'translateY(0)';
+    }
     return () => {
-      document.removeEventListener('focusin', handleKeyboardChange);
-      document.removeEventListener('focusout', handleKeyboardChange);
-      document.body.classList.remove('keyboard-open');
+      topbar.style.opacity = '1';
+      topbar.style.pointerEvents = '';
+      topbar.style.transform = 'translateY(0)';
     };
-  }, []);
+  }, [inputFocused, mobileView]);
 
   // Rooms
   useEffect(() => {
@@ -391,7 +392,7 @@ export default function Messages() {
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth">
                   <MessageList messages={messages} msgsLoading={msgsLoading} userEmail={user?.email} otherName={other?.name} bottomRef={bottomRef} />
                 </div>
-                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} />
+                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} onFocusChange={setInputFocused} />
               </>
             )}
           </div>

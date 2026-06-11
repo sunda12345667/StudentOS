@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Send, Plus, Smile, Mic, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export default function ChatComposer({ value, onChange, onSubmit, disabled, inputRef, onAfterSend }) {
+export default function ChatComposer({ value, onChange, onSubmit, disabled, inputRef, onAfterSend, onFocusChange }) {
   const textareaRef = useRef(null);
   const hasMessage = value.trim().length > 0;
 
@@ -40,7 +40,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
       className={cn(
         'flex-shrink-0 border-t border-border/50 bg-card/80 backdrop-blur-sm'
       )}
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)' }}
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)', touchAction: 'manipulation' }}
     >
       <form onSubmit={(e) => { onSubmit(e); refocusInput(); }} className="flex items-end gap-2 p-3">
         <Button
@@ -50,6 +50,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
           className="h-9 w-9 text-muted-foreground hover:text-primary flex-shrink-0"
           disabled={disabled}
           onMouseDown={e => e.preventDefault()}
+          style={{ touchAction: 'manipulation' }}
         >
           <Plus className="w-4 h-4" />
         </Button>
@@ -66,6 +67,8 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
             ref={handleTextareaRef}
             value={value}
             onChange={onChange}
+            onFocus={() => onFocusChange?.(true)}
+            onBlur={() => onFocusChange?.(false)}
             placeholder="Message..."
             disabled={disabled}
             className={cn(
@@ -85,6 +88,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
           className="h-9 w-9 text-muted-foreground hover:text-primary flex-shrink-0"
           disabled={disabled}
           onMouseDown={e => e.preventDefault()}
+          style={{ touchAction: 'manipulation' }}
         >
           <Smile className="w-4 h-4" />
         </Button>
@@ -99,6 +103,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
             )}
             disabled={!hasMessage || disabled}
             onMouseDown={e => e.preventDefault()}
+            style={{ touchAction: 'manipulation' }}
           >
             {disabled ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -114,6 +119,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
             className="h-9 w-9 text-muted-foreground hover:text-primary flex-shrink-0"
             disabled={disabled}
             onMouseDown={e => e.preventDefault()}
+            style={{ touchAction: 'manipulation' }}
           >
             <Mic className="w-4 h-4" />
           </Button>
