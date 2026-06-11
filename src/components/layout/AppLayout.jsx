@@ -6,6 +6,7 @@ import Topbar from './Topbar';
 import MobileTopbar from './MobileTopbar';
 import BottomNav from './BottomNav';
 import NotificationToast from '@/components/shared/NotificationToast';
+import OnboardingTutorial from '@/components/onboarding/OnboardingTutorial';
 
 // Pages where bottom nav should hide when keyboard opens (chat/input-heavy pages)
 const CHAT_PAGES = ['/messages'];
@@ -93,6 +94,9 @@ export default function AppLayout() {
 
       {/* Global real-time notification toasts */}
       <NotificationToast user={enrichedUser} />
+
+      {/* Onboarding tutorial — shown once to new users */}
+      <OnboardingTutorial user={enrichedUser} />
     </div>
   );
 }
