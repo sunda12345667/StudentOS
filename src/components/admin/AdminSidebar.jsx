@@ -3,11 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Percent, Megaphone, Building2, Wallet,
-  BarChart3, Bell, Settings, ChevronLeft, ChevronRight, Zap, X, Flag
+  BarChart3, Bell, Settings, ChevronLeft, ChevronRight, Zap, X, Flag, Users
 } from 'lucide-react';
 
 const NAV = [
   { label: 'Overview',       path: '/admin',              icon: LayoutDashboard },
+  { label: 'Users',          path: '/admin/users',        icon: Users },
   { label: 'Commission',     path: '/admin/commission',   icon: Percent },
   { label: 'Advertisements', path: '/admin/ads',          icon: Megaphone },
   { label: 'Advertisers',    path: '/admin/advertisers',  icon: Building2 },

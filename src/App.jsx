@@ -43,6 +43,7 @@ import AdminAnalytics from '@/pages/admin/AdminAnalytics';
 import AdminNotifications from '@/pages/admin/AdminNotifications';
 import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminReports from '@/pages/admin/AdminReports';
+import AdminUsers from '@/pages/admin/AdminUsers';
 import AdvertiserPortal from '@/pages/advertiser/AdvertiserPortal';
 
 const AuthenticatedApp = () => {
@@ -108,6 +109,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin/wallet" element={<AdminWallet />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
         </Route>
