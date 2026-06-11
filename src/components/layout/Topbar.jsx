@@ -1,22 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Search, Settings, LogOut, User, Moon, Sun, GraduationCap, Bell } from 'lucide-react';
+import { Search, Settings, LogOut, User, Moon, Sun, GraduationCap, Bell, X } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useTheme } from '@/lib/ThemeContext';
+import SearchDropdown from '@/components/feed/SearchDropdown';
 
 export default function Topbar({ user, sidebarCollapsed, isMobile }) {
-  const [query, setQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const searchRef = useRef(null);
   const initials = user?.full_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
 
   // Load unread notification count + subscribe to real-time updates
@@ -36,6 +38,14 @@ export default function Topbar({ user, sidebarCollapsed, isMobile }) {
     });
     return unsub;
   }, [user?.email]);
+
+  // Close search on outside click
+  useEffect(() => {
+    if (!searchOpen) return;
+    const handler = (e) => { if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [searchOpen]);
 
   const leftOffset = isMobile ? 0 : sidebarCollapsed ? 64 : 240;
 
@@ -82,16 +92,10 @@ export default function Topbar({ user, sidebarCollapsed, isMobile }) {
         </>
       ) : (
         <>
-          {/* Desktop layout unchanged */}
-          <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search courses, people, topics..."
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                className="pl-9 bg-muted border-0 rounded-full h-9 text-sm"
-              />
+          {/* Desktop search with dropdown */}
+          <div className="flex-1 max-w-md relative" ref={searchRef}>
+            <div onClick={() => setSearchOpen(true)}>
+              <SearchDropdown onClose={() => setSearchOpen(false)} />
             </div>
           </div>
           <div className="flex items-center gap-2 ml-auto">

@@ -5,13 +5,14 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, Bookmark, Copy, Repeat2, Flag, BadgeCheck, Building2, GraduationCap, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, Share2, MoreHorizontal, Trash2, Bookmark, Copy, Repeat2, Flag, BadgeCheck, Building2, GraduationCap, BookOpen, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import CommentSection from './CommentSection';
+import ImageLightbox from '@/components/feed/ImageLightbox';
 import { toast } from 'sonner';
 
 const ROLE_BADGE = {
@@ -34,6 +35,9 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [shareCount, setShareCount] = useState(post.share_count || 0);
   const [saved, setSaved] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState(post.content || '');
   const [heartAnim, setHeartAnim] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showRepost, setShowRepost] = useState(false);
@@ -51,7 +55,7 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const roleBadge = ROLE_BADGE[role];
   const verifyColor = VERIFY_COLOR[role] || 'text-sky-400';
 
-  // Fetch profile for school/dept/level (only if not already on post)
+  // Fetch profile for school/dept/level
   const [profile, setProfile] = useState(null);
   const profileFetched = useRef(false);
   useEffect(() => {
@@ -61,6 +65,14 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
       .then(res => { if (res?.[0]) setProfile(res[0]); })
       .catch(() => {});
   }, [post.author_email]);
+
+  // Load saved state
+  useEffect(() => {
+    if (!currentUser?.email) return;
+    base44.entities.SavedPost.filter({ user_email: currentUser.email, post_id: post.id })
+      .then(res => setSaved(res.length > 0))
+      .catch(() => {});
+  }, [currentUser?.email, post.id]);
 
   const doLike = async () => {
     if (!currentUser) return;
@@ -121,6 +133,33 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
     setShowReport(false); setReportReason(''); setReportDetails(''); setReporting(false);
   };
 
+  const doSave = async () => {
+    if (!currentUser) return;
+    if (saved) {
+      const existing = await base44.entities.SavedPost.filter({ user_email: currentUser.email, post_id: post.id });
+      if (existing.length) await base44.entities.SavedPost.delete(existing[0].id);
+      setSaved(false);
+      toast.success('Removed from saved');
+    } else {
+      await base44.entities.SavedPost.create({
+        user_email: currentUser.email, post_id: post.id,
+        post_content: post.content?.slice(0, 200) || '',
+        post_author_name: post.author_name, post_author_avatar: post.author_avatar,
+        post_image_url: post.image_url || '',
+      });
+      setSaved(true);
+      toast.success('Post saved!');
+    }
+  };
+
+  const doEditSave = async () => {
+    if (!editContent.trim()) return;
+    await base44.entities.Post.update(post.id, { content: editContent.trim() });
+    post.content = editContent.trim();
+    setEditing(false);
+    toast.success('Post updated!');
+  };
+
   const doShare = async (method) => {
     const url = `${window.location.origin}/`;
     const text = `${post.content?.slice(0, 100)}...`;
@@ -150,14 +189,10 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
       {/* Header */}
       <div className="px-4 pt-3.5 pb-2 flex items-start gap-3">
         <Link to={`/profile/${post.author_email}`} className="flex-shrink-0 mt-0.5">
-          <div className="relative">
-            <Avatar className="h-10 w-10 ring-2 ring-violet-500/30">
-              <AvatarImage src={post.author_avatar} />
-              <AvatarFallback className="gradient-brand text-white font-bold text-sm">{initials}</AvatarFallback>
-            </Avatar>
-            {/* Online dot */}
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-card" />
-          </div>
+          <Avatar className="h-10 w-10 ring-2 ring-violet-500/30">
+            <AvatarImage src={post.author_avatar} />
+            <AvatarFallback className="gradient-brand text-white font-bold text-sm">{initials}</AvatarFallback>
+          </Avatar>
         </Link>
 
         <div className="flex-1 min-w-0">
@@ -213,10 +248,15 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl">
                 {isOwner ? (
-                  <DropdownMenuItem className="text-destructive cursor-pointer"
-                    onClick={() => { base44.entities.Post.delete(post.id); onDelete?.(post.id); }}>
-                    <Trash2 className="w-4 h-4 mr-2" />Delete
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => { setEditContent(post.content || ''); setEditing(true); }}>
+                      <Pencil className="w-4 h-4 mr-2 text-primary" />Edit Post
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive cursor-pointer"
+                      onClick={() => { base44.entities.Post.delete(post.id); onDelete?.(post.id); }}>
+                      <Trash2 className="w-4 h-4 mr-2" />Delete
+                    </DropdownMenuItem>
+                  </>
                 ) : currentUser && (
                   <DropdownMenuItem className="cursor-pointer" onClick={() => setShowReport(true)}>
                     <Flag className="w-4 h-4 mr-2 text-amber-500" />Report Post
@@ -228,6 +268,23 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
         </div>
       </div>
 
+      {/* Edit Modal */}
+      <Dialog open={editing} onOpenChange={setEditing}>
+        <DialogContent className="max-w-sm rounded-2xl">
+          <DialogHeader><DialogTitle className="text-base font-bold flex items-center gap-2"><Pencil className="w-4 h-4 text-primary" />Edit Post</DialogTitle></DialogHeader>
+          <div className="space-y-3 mt-1">
+            <Textarea value={editContent} onChange={e => setEditContent(e.target.value)} rows={5} className="resize-none rounded-xl text-sm" />
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 rounded-xl" onClick={() => setEditing(false)}>Cancel</Button>
+              <Button className="flex-1 gradient-brand border-0 rounded-xl" onClick={doEditSave}>Save</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Lightbox */}
+      {lightboxSrc && <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />}
+
       {/* Content */}
       <div onClick={handleContentTap} className="relative select-none">
         {post.content && (
@@ -237,7 +294,7 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
         )}
 
         {post.image_url && (
-          <div className="relative mx-4 mb-2.5 rounded-2xl overflow-hidden">
+          <div className="relative mx-4 mb-2.5 rounded-2xl overflow-hidden cursor-zoom-in" onClick={e => { e.stopPropagation(); setLightboxSrc(post.image_url); }}>
             <img src={post.image_url} alt="Post" className="w-full max-h-[400px] object-cover" />
             <AnimatePresence>
               {heartAnim && (
@@ -304,7 +361,7 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
           <Share2 className="w-[17px] h-[17px] group-hover:scale-110 transition-transform" />
         </button>
 
-        <button onClick={() => setSaved(s => !s)}
+        <button onClick={doSave}
           className={`flex items-center gap-1.5 transition-colors p-2 rounded-full group ${saved ? 'text-violet-400' : 'text-muted-foreground hover:text-violet-400 hover:bg-violet-400/8'}`}>
           <Bookmark className={`w-[17px] h-[17px] group-hover:scale-110 transition-transform ${saved ? 'fill-violet-400' : ''}`} />
         </button>

@@ -1,31 +1,75 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useOutletContext, Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles, Play, Trophy, BookOpen, Flame, Users, GraduationCap } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Loader2, Sparkles, Play, Trophy, BookOpen, Flame, Users, ArrowUp, Bookmark } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import CreatePostBox from '@/components/shared/CreatePostBox';
 import PostCard from '@/components/shared/PostCard';
 import StoriesBar from '@/components/social/StoriesBar';
 import TrendingPanel from '@/components/social/TrendingPanel';
 import MobileFeedHeader from '@/components/feed/MobileFeedHeader';
 
+const PAGE_SIZE = 15;
+
 export default function Feed() {
   const { user } = useOutletContext();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [activeHashtag, setActiveHashtag] = useState(null);
   const [feedFilter, setFeedFilter] = useState('all');
   const [followingEmails, setFollowingEmails] = useState([]);
+  const [newPostCount, setNewPostCount] = useState(0);
+  const sentinelRef = useRef(null);
+  const offsetRef = useRef(0);
+  const newestIdRef = useRef(null);
 
   const load = useCallback(async () => {
-    const data = await base44.entities.Post.list('-created_date', 60);
+    setLoading(true);
+    const data = await base44.entities.Post.list('-created_date', PAGE_SIZE);
     setPosts(data);
+    offsetRef.current = data.length;
+    setHasMore(data.length === PAGE_SIZE);
+    if (data.length) newestIdRef.current = data[0].id;
     setLoading(false);
+    setNewPostCount(0);
   }, []);
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const all = await base44.entities.Post.list('-created_date', PAGE_SIZE + offsetRef.current);
+    const next = all.slice(offsetRef.current);
+    if (next.length === 0) { setHasMore(false); setLoadingMore(false); return; }
+    setPosts(p => [...p, ...next]);
+    offsetRef.current += next.length;
+    setHasMore(next.length === PAGE_SIZE);
+    setLoadingMore(false);
+  }, [loadingMore, hasMore]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMore(); }, { rootMargin: '200px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loadMore]);
+
   useEffect(() => { load(); }, [load]);
+
+  // Real-time new post detection
+  useEffect(() => {
+    const unsub = base44.entities.Post.subscribe((event) => {
+      if (event.type === 'create' && event.data?.author_email !== user?.email) {
+        setNewPostCount(c => c + 1);
+      }
+    });
+    return unsub;
+  }, [user?.email]);
 
   useEffect(() => {
     if (user?.email && feedFilter === 'following') {
@@ -73,6 +117,7 @@ export default function Feed() {
             { icon: Trophy, label: 'Leaderboard', path: '/leaderboard', color: 'text-amber-500' },
             { icon: Sparkles, label: 'AI Tutor', path: '/ai-tutor', color: 'text-cyan-500' },
             { icon: Users, label: 'Campus', path: '/campus', color: 'text-violet-500' },
+            { icon: Bookmark, label: 'Saved Posts', path: '/saved', color: 'text-violet-400' },
           ].map(item => (
             <Link key={item.path} to={item.path}>
               <div className="flex items-center gap-3 py-2 px-2 rounded-xl hover:bg-muted transition-colors cursor-pointer">
@@ -121,6 +166,20 @@ export default function Feed() {
           ))}
         </div>
 
+        {/* New posts banner */}
+        <AnimatePresence>
+          {newPostCount > 0 && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+              className="px-4 lg:px-0">
+              <button onClick={load}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl gradient-brand text-white text-sm font-semibold shadow-lg hover:opacity-90 transition-opacity">
+                <ArrowUp className="w-4 h-4" />
+                {newPostCount} new {newPostCount === 1 ? 'post' : 'posts'} — tap to refresh
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Create Post */}
         <div className="px-4 py-3 lg:px-0 lg:py-0 border-b border-border/50 lg:border-0">
           {user && <CreatePostBox user={user} onPosted={load} />}
@@ -161,10 +220,19 @@ export default function Feed() {
                   onDelete={id => setPosts(p => p.filter(x => x.id !== id))}
                   onHashtagClick={tag => { setActiveHashtag(tag); setFeedFilter('all'); }}
                 />
-                {/* Mobile divider */}
                 <div className="h-px bg-border lg:hidden" />
               </motion.div>
             ))}
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-4" />
+            {loadingMore && (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-6 h-6 animate-spin text-primary/40" />
+              </div>
+            )}
+            {!hasMore && filteredPosts.length > 0 && (
+              <p className="text-center text-xs text-muted-foreground py-4">You're all caught up!</p>
+            )}
           </div>
         )}
       </div>

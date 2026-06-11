@@ -1,0 +1,28 @@
+{
+  "name": "SavedPost",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string"
+    },
+    "post_id": {
+      "type": "string"
+    },
+    "post_content": {
+      "type": "string"
+    },
+    "post_author_name": {
+      "type": "string"
+    },
+    "post_author_avatar": {
+      "type": "string"
+    },
+    "post_image_url": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "user_email",
+    "post_id"
+  ]
+}

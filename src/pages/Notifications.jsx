@@ -55,9 +55,17 @@ export default function Notifications() {
       await base44.entities.Notification.update(n.id, { is_read: true });
       setNotifications(p => p.map(x => x.id === n.id ? { ...x, is_read: true } : x));
     }
-    // Navigate for message notifications
+    // Smart navigation based on notification type
     if (n.type === 'message' && n.entity_id) {
       navigate('/messages', { state: { conversationId: n.entity_id } });
+    } else if ((n.type === 'like' || n.type === 'comment' || n.type === 'share') && n.entity_id) {
+      navigate('/', { state: { highlightPostId: n.entity_id } });
+    } else if (n.type === 'follow' && n.from_email) {
+      navigate(`/profile/${n.from_email}`);
+    } else if (n.type === 'marketplace' && n.entity_id) {
+      navigate('/marketplace');
+    } else if (n.type === 'enrollment' && n.entity_id) {
+      navigate(`/classroom/${n.entity_id}`);
     }
   };
 
