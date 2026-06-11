@@ -185,6 +185,9 @@ export default function Login() {
           <p className="text-center text-white/15 text-[10px] mt-6">
             🔒 Your data is safe & encrypted
           </p>
+          <p className="text-center text-white/10 text-[9px] mt-2">
+            Google sign-in is securely handled by our auth provider
+          </p>
         </motion.div>
       </div>
     </div>

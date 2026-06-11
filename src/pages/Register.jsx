@@ -399,6 +399,9 @@ export default function Register() {
           <p className="text-center text-white/15 text-[10px] mt-4">
             By joining, you agree to our Terms & Privacy Policy
           </p>
+          <p className="text-center text-white/10 text-[9px] mt-1">
+            Google sign-in is securely handled by our auth provider
+          </p>
         </motion.div>
       </div>
     </div>
