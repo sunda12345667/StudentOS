@@ -30,6 +30,15 @@
       ],
       "default": "student"
     },
+    "school_name": {
+      "type": "string"
+    },
+    "department": {
+      "type": "string"
+    },
+    "grade_level": {
+      "type": "string"
+    },
     "likes": {
       "type": "array",
       "items": {

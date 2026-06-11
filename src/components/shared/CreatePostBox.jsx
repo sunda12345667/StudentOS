@@ -22,7 +22,7 @@ const POST_ACTIONS = [
   { icon: Trophy,    label: 'Achievement',color: 'text-yellow-400 hover:bg-yellow-400/10', type: 'achievement' },
 ];
 
-export default function CreatePostBox({ user, onPosted, extraData = {} }) {
+export default function CreatePostBox({ user, userProfile, onPosted, extraData = {} }) {
   const [content, setContent] = useState('');
   const [imageFile, setImageFile] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
@@ -41,10 +41,15 @@ export default function CreatePostBox({ user, onPosted, extraData = {} }) {
     if (imageFile) { const r = await base44.integrations.Core.UploadFile({ file: imageFile }); image_url = r.file_url; }
     if (videoFile) { const r = await base44.integrations.Core.UploadFile({ file: videoFile }); video_url = r.file_url; }
     const tags = extractHashtags(content);
+    // Embed profile metadata directly on the post — avoids per-card profile fetches
     await base44.entities.Post.create({
       content: content.trim(), image_url, video_url, tags,
       author_name: user.full_name, author_email: user.email,
       author_avatar: user.avatar_url || '',
+      author_role: user.role || 'student',
+      school_name: userProfile?.school_name || '',
+      department: userProfile?.department || '',
+      grade_level: userProfile?.grade_level || '',
       likes: [], like_count: 0, comment_count: 0, share_count: 0,
       privacy: 'public', ...extraData,
     });

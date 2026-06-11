@@ -28,13 +28,14 @@ const VERIFY_COLOR = {
   student: 'text-sky-400',
 };
 
-export default function PostCard({ post, currentUser, onDelete, onHashtagClick }) {
+export default function PostCard({ post, currentUser, onDelete, onHashtagClick, savedIds, onSaveToggle }) {
   const [showComments, setShowComments] = useState(false);
   const [liked, setLiked] = useState(post.likes?.includes(currentUser?.email));
   const [likeCount, setLikeCount] = useState(post.like_count || 0);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [shareCount, setShareCount] = useState(post.share_count || 0);
-  const [saved, setSaved] = useState(false);
+  // saved state: derive from shared Set passed from Feed — no per-card API call
+  const saved = savedIds ? savedIds.has(post.id) : false;
   const [lightboxSrc, setLightboxSrc] = useState(null);
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content || '');
@@ -55,24 +56,8 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const roleBadge = ROLE_BADGE[role];
   const verifyColor = VERIFY_COLOR[role] || 'text-sky-400';
 
-  // Fetch profile for school/dept/level
-  const [profile, setProfile] = useState(null);
-  const profileFetched = useRef(false);
-  useEffect(() => {
-    if (profileFetched.current) return;
-    profileFetched.current = true;
-    base44.entities.UserProfile.filter({ user_email: post.author_email })
-      .then(res => { if (res?.[0]) setProfile(res[0]); })
-      .catch(() => {});
-  }, [post.author_email]);
-
-  // Load saved state
-  useEffect(() => {
-    if (!currentUser?.email) return;
-    base44.entities.SavedPost.filter({ user_email: currentUser.email, post_id: post.id })
-      .then(res => setSaved(res.length > 0))
-      .catch(() => {});
-  }, [currentUser?.email, post.id]);
+  // Profile data is embedded in post itself (school_name, department, grade_level)
+  // No per-card API call — PostCard uses only what's on the post object
 
   const doLike = async () => {
     if (!currentUser) return;
@@ -136,18 +121,20 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
   const doSave = async () => {
     if (!currentUser) return;
     if (saved) {
-      const existing = await base44.entities.SavedPost.filter({ user_email: currentUser.email, post_id: post.id });
-      if (existing.length) await base44.entities.SavedPost.delete(existing[0].id);
-      setSaved(false);
+      // Optimistically update UI first
+      onSaveToggle?.(post.id, false);
+      base44.entities.SavedPost.filter({ user_email: currentUser.email, post_id: post.id })
+        .then(existing => { if (existing.length) base44.entities.SavedPost.delete(existing[0].id); })
+        .catch(() => {});
       toast.success('Removed from saved');
     } else {
-      await base44.entities.SavedPost.create({
+      onSaveToggle?.(post.id, true);
+      base44.entities.SavedPost.create({
         user_email: currentUser.email, post_id: post.id,
         post_content: post.content?.slice(0, 200) || '',
         post_author_name: post.author_name, post_author_avatar: post.author_avatar,
         post_image_url: post.image_url || '',
-      });
-      setSaved(true);
+      }).catch(() => {});
       toast.success('Post saved!');
     }
   };
@@ -213,24 +200,24 @@ export default function PostCard({ post, currentUser, onDelete, onHashtagClick }
 
               {/* School · Dept · Level · Time */}
               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-                {profile?.school_name && (
+                {post.school_name && (
                   <>
                     <Building2 className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-[11px] text-muted-foreground font-medium truncate max-w-[90px]">{profile.school_name}</span>
+                    <span className="text-[11px] text-muted-foreground font-medium truncate max-w-[90px]">{post.school_name}</span>
                     <span className="text-muted-foreground/40 text-[10px]">·</span>
                   </>
                 )}
-                {profile?.department && (
+                {post.department && (
                   <>
                     <BookOpen className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{profile.department}</span>
+                    <span className="text-[11px] text-muted-foreground truncate max-w-[80px]">{post.department}</span>
                     <span className="text-muted-foreground/40 text-[10px]">·</span>
                   </>
                 )}
-                {profile?.grade_level && (
+                {post.grade_level && (
                   <>
                     <GraduationCap className="w-2.5 h-2.5 text-muted-foreground flex-shrink-0" />
-                    <span className="text-[11px] text-muted-foreground">{profile.grade_level}</span>
+                    <span className="text-[11px] text-muted-foreground">{post.grade_level}</span>
                     <span className="text-muted-foreground/40 text-[10px]">·</span>
                   </>
                 )}

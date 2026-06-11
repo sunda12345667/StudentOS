@@ -23,29 +23,32 @@ export default function Feed() {
   const [feedFilter, setFeedFilter] = useState('all');
   const [followingEmails, setFollowingEmails] = useState([]);
   const [newPostCount, setNewPostCount] = useState(0);
+  // savedIds: Set of post IDs the user has bookmarked — loaded ONCE, shared to all PostCards
+  const [savedIds, setSavedIds] = useState(new Set());
+  const [userProfile, setUserProfile] = useState(null);
   const sentinelRef = useRef(null);
-  const offsetRef = useRef(0);
-  const newestIdRef = useRef(null);
+  const skipRef = useRef(0);
+  const newPostTimerRef = useRef(null);
 
+  // Load initial page
   const load = useCallback(async () => {
     setLoading(true);
     const data = await base44.entities.Post.list('-created_date', PAGE_SIZE);
     setPosts(data);
-    offsetRef.current = data.length;
+    skipRef.current = data.length;
     setHasMore(data.length === PAGE_SIZE);
-    if (data.length) newestIdRef.current = data[0].id;
     setLoading(false);
     setNewPostCount(0);
   }, []);
 
+  // Cursor-based pagination — uses skip, never re-fetches old posts
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
-    const all = await base44.entities.Post.list('-created_date', PAGE_SIZE + offsetRef.current);
-    const next = all.slice(offsetRef.current);
-    if (next.length === 0) { setHasMore(false); setLoadingMore(false); return; }
+    const next = await base44.entities.Post.list('-created_date', PAGE_SIZE, skipRef.current);
+    if (!next || next.length === 0) { setHasMore(false); setLoadingMore(false); return; }
     setPosts(p => [...p, ...next]);
-    offsetRef.current += next.length;
+    skipRef.current += next.length;
     setHasMore(next.length === PAGE_SIZE);
     setLoadingMore(false);
   }, [loadingMore, hasMore]);
@@ -54,21 +57,36 @@ export default function Feed() {
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
-    const obs = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMore(); }, { rootMargin: '200px' });
+    const obs = new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadMore(); }, { rootMargin: '300px' });
     obs.observe(el);
     return () => obs.disconnect();
   }, [loadMore]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Real-time new post detection
+  // Real-time: batch new-post notifications (max 1 update per 3s) to avoid per-event re-renders
   useEffect(() => {
     const unsub = base44.entities.Post.subscribe((event) => {
       if (event.type === 'create' && event.data?.author_email !== user?.email) {
-        setNewPostCount(c => c + 1);
+        if (newPostTimerRef.current) return; // already pending
+        newPostTimerRef.current = setTimeout(() => {
+          setNewPostCount(c => c + 1);
+          newPostTimerRef.current = null;
+        }, 3000);
       }
     });
-    return unsub;
+    return () => { unsub(); clearTimeout(newPostTimerRef.current); };
+  }, [user?.email]);
+
+  // Load ALL saved post IDs + user profile in ONE batch
+  useEffect(() => {
+    if (!user?.email) return;
+    base44.entities.SavedPost.filter({ user_email: user.email }, 'created_date', 200)
+      .then(res => setSavedIds(new Set(res.map(s => s.post_id))))
+      .catch(() => {});
+    base44.entities.UserProfile.filter({ user_email: user.email })
+      .then(res => { if (res?.[0]) setUserProfile(res[0]); })
+      .catch(() => {});
   }, [user?.email]);
 
   useEffect(() => {
@@ -182,7 +200,7 @@ export default function Feed() {
 
         {/* Create Post */}
         <div className="px-4 py-3 lg:px-0 lg:py-0 border-b border-border/50 lg:border-0">
-          {user && <CreatePostBox user={user} onPosted={load} />}
+          {user && <CreatePostBox user={user} userProfile={userProfile} onPosted={load} />}
         </div>
 
         {/* Post list */}
@@ -217,6 +235,14 @@ export default function Feed() {
                 <PostCard
                   post={post}
                   currentUser={user}
+                  savedIds={savedIds}
+                  onSaveToggle={(postId, isSaved) => {
+                    setSavedIds(prev => {
+                      const next = new Set(prev);
+                      isSaved ? next.add(postId) : next.delete(postId);
+                      return next;
+                    });
+                  }}
                   onDelete={id => setPosts(p => p.filter(x => x.id !== id))}
                   onHashtagClick={tag => { setActiveHashtag(tag); setFeedFilter('all'); }}
                 />
