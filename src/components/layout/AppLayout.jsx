@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import MobileTopbar from './MobileTopbar';
 import BottomNav from './BottomNav';
+import NotificationToast from '@/components/shared/NotificationToast';
 
 // Pages where bottom nav should hide when keyboard opens (chat/input-heavy pages)
 const CHAT_PAGES = ['/messages'];
@@ -89,6 +90,9 @@ export default function AppLayout() {
           hidden={isChatPage && keyboardOpen}
         />
       )}
+
+      {/* Global real-time notification toasts */}
+      <NotificationToast user={enrichedUser} />
     </div>
   );
 }

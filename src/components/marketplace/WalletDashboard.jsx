@@ -105,6 +105,12 @@ function FundModal({ open, onClose, user }) {
   );
 }
 
+const STATUS_BADGE = {
+  pending:  { label: 'Pending Review', color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
+  approved: { label: 'Approved',       color: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' },
+  rejected: { label: 'Rejected',       color: 'bg-red-500/15 text-red-600 border-red-500/30' },
+};
+
 function WithdrawModal({ open, onClose, wallet, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [bank, setBank] = useState('');
@@ -119,15 +125,20 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
     if (!bank || !account || account.length < 10) { toast.error('Please enter valid bank details'); return; }
     setLoading(true);
     try {
-      const description = `Withdrawal to ${bank} •••• ${account.slice(-4)}${note ? ' — ' + note : ''}`;
-      const updated = await recordTransaction(wallet, {
-        type: 'withdrawal',
+      // Create a WithdrawalRequest — admin will approve/reject. Balance NOT deducted yet.
+      await base44.entities.WithdrawalRequest.create({
+        user_email: wallet.user_email,
+        user_name: wallet.user_name || '',
         amount: amt,
-        description,
+        bank,
+        account_number: account,
+        note: note || '',
+        status: 'pending',
+        wallet_id: wallet.id,
         reference: `WD-${Date.now()}`,
       });
-      toast.success(`₦${amt.toLocaleString()} withdrawal request submitted!`);
-      onSuccess(updated);
+      toast.success('Withdrawal request submitted! You\'ll be notified once approved.');
+      onSuccess(wallet);
       onClose();
       setAmount(''); setBank(''); setAccount(''); setNote('');
     } catch (e) {
@@ -167,10 +178,12 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
             <label className="text-xs font-medium mb-1 block">Note (optional)</label>
             <Input placeholder="Reason..." value={note} onChange={e => setNote(e.target.value)} />
           </div>
-          <p className="text-xs text-muted-foreground text-center">Withdrawals are processed within 1–3 business days.</p>
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <p className="text-xs text-amber-700">⚠️ Withdrawal requests are reviewed by admin. Balance is deducted upon approval within 1–3 business days.</p>
+          </div>
           <Button onClick={withdraw} disabled={loading || !amount} className="w-full gap-2 bg-violet-600 hover:bg-violet-700 border-0 text-white">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Minus className="w-4 h-4" />}
-            {loading ? 'Submitting...' : 'Submit Withdrawal'}
+            {loading ? 'Submitting...' : 'Submit Withdrawal Request'}
           </Button>
         </div>
       </DialogContent>
@@ -206,6 +219,7 @@ function TransactionRow({ tx }) {
 export default function WalletDashboard({ user }) {
   const [wallet, setWallet] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fundOpen, setFundOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -213,12 +227,14 @@ export default function WalletDashboard({ user }) {
   const load = useCallback(async () => {
     if (!user?.email) return;
     setLoading(true);
-    const [w, txs] = await Promise.all([
+    const [w, txs, wrs] = await Promise.all([
       getOrCreateWallet(user.email, user.full_name),
       base44.entities.Transaction.filter({ user_email: user.email }, '-created_date', 50),
+      base44.entities.WithdrawalRequest.filter({ user_email: user.email }, '-created_date', 20),
     ]);
     setWallet(w);
     setTransactions(txs);
+    setWithdrawalRequests(wrs);
     setLoading(false);
   }, [user?.email]);
 
@@ -241,12 +257,26 @@ export default function WalletDashboard({ user }) {
     if (!user?.email) return;
     const unsub = base44.entities.Transaction.subscribe((event) => {
       if (event.data?.user_email !== user.email) return;
-      if (event.type === 'create') {
-        setTransactions(prev => [event.data, ...prev]);
-      }
+      if (event.type === 'create') setTransactions(prev => [event.data, ...prev]);
+      if (event.type === 'update') setTransactions(prev => prev.map(t => t.id === event.id ? event.data : t));
     });
     return unsub;
   }, [user?.email]);
+
+  // Real-time withdrawal request updates
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsub = base44.entities.WithdrawalRequest.subscribe((event) => {
+      if (event.data?.user_email !== user.email) return;
+      if (event.type === 'create') setWithdrawalRequests(prev => [event.data, ...prev]);
+      if (event.type === 'update') {
+        setWithdrawalRequests(prev => prev.map(w => w.id === event.id ? event.data : w));
+        // Reload wallet balance if approved (balance was deducted server-side)
+        if (event.data?.status === 'approved') load();
+      }
+    });
+    return unsub;
+  }, [user?.email, load]);
 
   // Handle redirect back from Paystack — verify + credit immediately, then poll as fallback
   const params = new URLSearchParams(window.location.search);
@@ -370,6 +400,34 @@ export default function WalletDashboard({ user }) {
           </Card>
         ))}
       </div>
+
+      {/* Withdrawal Request Tracker */}
+      {withdrawalRequests.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <ArrowUpRight className="w-4 h-4 text-violet-600" />Withdrawal Requests
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 px-4 pb-3 space-y-2">
+            {withdrawalRequests.map(wr => {
+              const badge = STATUS_BADGE[wr.status] || STATUS_BADGE.pending;
+              return (
+                <div key={wr.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">₦{(wr.amount || 0).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground truncate">{wr.bank} •••• {wr.account_number?.slice(-4)}</p>
+                    {wr.admin_note && <p className="text-xs text-muted-foreground mt-0.5 italic">"{wr.admin_note}"</p>}
+                  </div>
+                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${badge.color}`}>
+                    {badge.label}
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Transaction history */}
       <Card>

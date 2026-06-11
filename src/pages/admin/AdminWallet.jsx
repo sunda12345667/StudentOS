@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import StatCard from '@/components/admin/StatCard';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
-  DollarSign, TrendingUp, Percent, Megaphone, Clock, Download,
-  CheckCircle2, XCircle, ArrowDownToLine, X, Loader2, RefreshCw
+  DollarSign, Percent, Megaphone, Clock,
+  CheckCircle2, XCircle, ArrowDownToLine, Loader2, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
@@ -42,26 +41,23 @@ export default function AdminWallet() {
   const [ads, setAds] = useState([]);
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [txFilter, setTxFilter] = useState('all');
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [withdrawForm, setWithdrawForm] = useState({ amount: '', bank: '', account: '', note: '' });
-  const [submitting, setSubmitting] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [txs, ws, os, as_] = await Promise.all([
+      const [txs, ws, os, as_, wrs] = await Promise.all([
         base44.entities.Transaction.list('-created_date', 200),
         base44.entities.Wallet.list('-created_date', 500),
         base44.entities.Order.list('-created_date', 200),
         base44.entities.AdCampaign.list('-created_date', 100),
+        base44.entities.WithdrawalRequest.filter({ status: 'pending' }, '-created_date', 100),
       ]);
       setTransactions(txs);
       setWallets(ws);
       setOrders(os);
       setAds(as_);
-      // Withdrawal requests = transactions of type 'withdrawal' with pending status
-      setWithdrawalRequests(txs.filter(t => t.type === 'withdrawal' && t.status === 'pending'));
+      setWithdrawalRequests(wrs);
     } catch (e) {
       console.error(e);
     } finally {
@@ -73,18 +69,19 @@ export default function AdminWallet() {
 
   // Real-time subscription for new transactions
   useEffect(() => {
-    const unsub = base44.entities.Transaction.subscribe((event) => {
-      if (event.type === 'create') {
-        setTransactions(prev => [event.data, ...prev]);
-        if (event.data?.type === 'withdrawal' && event.data?.status === 'pending') {
-          setWithdrawalRequests(prev => [event.data, ...prev]);
-        }
+    const unsubTx = base44.entities.Transaction.subscribe((event) => {
+      if (event.type === 'create') setTransactions(prev => [event.data, ...prev]);
+      else if (event.type === 'update') setTransactions(prev => prev.map(t => t.id === event.id ? event.data : t));
+    });
+    // Real-time withdrawal requests
+    const unsubWR = base44.entities.WithdrawalRequest.subscribe((event) => {
+      if (event.type === 'create' && event.data?.status === 'pending') {
+        setWithdrawalRequests(prev => [event.data, ...prev]);
       } else if (event.type === 'update') {
-        setTransactions(prev => prev.map(t => t.id === event.id ? event.data : t));
-        setWithdrawalRequests(prev => prev.map(t => t.id === event.id ? event.data : t).filter(t => t.status === 'pending'));
+        setWithdrawalRequests(prev => prev.filter(w => w.id !== event.id)); // remove from pending list
       }
     });
-    return unsub;
+    return () => { unsubTx(); unsubWR(); };
   }, []);
 
   // ---- Derived metrics ----
@@ -116,45 +113,70 @@ export default function AdminWallet() {
     return true;
   }).slice(0, 50);
 
-  // Submit a platform withdrawal request (persisted to DB)
-  const handleWithdraw = async () => {
-    if (!withdrawForm.amount || !withdrawForm.bank || !withdrawForm.account) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-    const amt = Number(withdrawForm.amount);
-    if (amt < 100) { toast.error('Minimum withdrawal is ₦100'); return; }
-
-    setSubmitting(true);
+  // Approve a withdrawal: deduct wallet balance + create transaction + notify user
+  const approveWithdrawal = async (wr) => {
+    setApprovingId(wr.id);
     try {
-      await base44.entities.Transaction.create({
-        user_email: 'platform@admin',
-        type: 'withdrawal',
-        amount: amt,
-        balance_before: totalWalletBalance,
-        balance_after: totalWalletBalance - amt,
-        description: `Platform withdrawal to ${withdrawForm.bank} •••• ${withdrawForm.account.slice(-4)}${withdrawForm.note ? ' — ' + withdrawForm.note : ''}`,
-        reference: `PW-${Date.now()}`,
-        status: 'pending',
+      // 1. Get user's wallet
+      const walletList = await base44.entities.Wallet.filter({ user_email: wr.user_email });
+      const userWallet = walletList[0];
+      if (!userWallet) { toast.error('User wallet not found'); return; }
+      if (userWallet.balance < wr.amount) { toast.error('User has insufficient balance'); return; }
+
+      // 2. Deduct balance
+      const newBalance = userWallet.balance - wr.amount;
+      await base44.entities.Wallet.update(userWallet.id, {
+        balance: newBalance,
+        total_withdrawn: (userWallet.total_withdrawn || 0) + wr.amount,
       });
-      toast.success('Withdrawal request submitted!');
-      setShowWithdrawModal(false);
-      setWithdrawForm({ amount: '', bank: '', account: '', note: '' });
-      load();
+
+      // 3. Record the transaction
+      await base44.entities.Transaction.create({
+        user_email: wr.user_email,
+        type: 'withdrawal',
+        amount: wr.amount,
+        balance_before: userWallet.balance,
+        balance_after: newBalance,
+        description: `Withdrawal to ${wr.bank} •••• ${wr.account_number?.slice(-4)}`,
+        reference: wr.reference || `WD-${Date.now()}`,
+        status: 'completed',
+      });
+
+      // 4. Mark the request approved
+      await base44.entities.WithdrawalRequest.update(wr.id, { status: 'approved' });
+
+      // 5. Notify the user
+      await base44.entities.Notification.create({
+        user_email: wr.user_email,
+        type: 'marketplace',
+        content: `Your withdrawal of ₦${wr.amount.toLocaleString()} has been approved and is being processed.`,
+        is_read: false,
+      });
+
+      setWithdrawalRequests(prev => prev.filter(w => w.id !== wr.id));
+      toast.success('Withdrawal approved and user notified!');
     } catch (e) {
       toast.error(e.message);
     } finally {
-      setSubmitting(false);
+      setApprovingId(null);
     }
   };
 
-  // Approve or reject a withdrawal request
-  const updateWithdrawal = async (tx, newStatus) => {
-    setApprovingId(tx.id);
+  // Reject a withdrawal request
+  const rejectWithdrawal = async (wr, adminNote = '') => {
+    setApprovingId(wr.id);
     try {
-      await base44.entities.Transaction.update(tx.id, { status: newStatus });
-      setWithdrawalRequests(prev => prev.filter(w => w.id !== tx.id));
-      toast.success(`Withdrawal ${newStatus === 'completed' ? 'approved' : 'rejected'}`);
+      await base44.entities.WithdrawalRequest.update(wr.id, { status: 'rejected', admin_note: adminNote });
+
+      await base44.entities.Notification.create({
+        user_email: wr.user_email,
+        type: 'marketplace',
+        content: `Your withdrawal request of ₦${wr.amount.toLocaleString()} was not approved.${adminNote ? ' Reason: ' + adminNote : ''}`,
+        is_read: false,
+      });
+
+      setWithdrawalRequests(prev => prev.filter(w => w.id !== wr.id));
+      toast.success('Withdrawal rejected and user notified');
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -170,89 +192,6 @@ export default function AdminWallet() {
 
   return (
     <div className="space-y-6">
-
-      {/* Withdraw Modal */}
-      {showWithdrawModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="bg-[#0d1220] border border-white/10 rounded-2xl w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-white/8">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-red-500/15 flex items-center justify-center">
-                  <ArrowDownToLine className="w-4 h-4 text-red-400" />
-                </div>
-                <div>
-                  <h3 className="text-white font-bold text-sm">Withdraw Platform Funds</h3>
-                  <p className="text-white/40 text-xs">Submit a payout request</p>
-                </div>
-              </div>
-              <button onClick={() => setShowWithdrawModal(false)} className="text-white/40 hover:text-white p-1">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div className="bg-white/5 rounded-xl p-3 text-center">
-                <p className="text-white/40 text-xs">Available commission + ad revenue</p>
-                <p className="text-2xl font-black text-primary">₦{(totalCommission + adRevenue).toLocaleString()}</p>
-              </div>
-              <div>
-                <label className="text-white/60 text-xs mb-1.5 block">Amount (₦) <span className="text-red-400">*</span></label>
-                <Input
-                  type="number"
-                  placeholder="e.g. 50000"
-                  value={withdrawForm.amount}
-                  onChange={e => setWithdrawForm(p => ({ ...p, amount: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20"
-                />
-              </div>
-              <div>
-                <label className="text-white/60 text-xs mb-1.5 block">Bank Name <span className="text-red-400">*</span></label>
-                <select
-                  value={withdrawForm.bank}
-                  onChange={e => setWithdrawForm(p => ({ ...p, bank: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 text-white text-sm rounded-md px-3 py-2"
-                >
-                  <option value="" className="bg-[#0d1220]">Select bank...</option>
-                  {['GTBank','Zenith Bank','Access Bank','First Bank','UBA','Fidelity Bank','FCMB','Stanbic IBTC','Polaris Bank','Keystone Bank'].map(b => (
-                    <option key={b} value={b} className="bg-[#0d1220]">{b}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-white/60 text-xs mb-1.5 block">Account Number <span className="text-red-400">*</span></label>
-                <Input
-                  type="text"
-                  placeholder="10-digit account number"
-                  maxLength={10}
-                  value={withdrawForm.account}
-                  onChange={e => setWithdrawForm(p => ({ ...p, account: e.target.value.replace(/\D/g, '') }))}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 font-mono"
-                />
-              </div>
-              <div>
-                <label className="text-white/60 text-xs mb-1.5 block">Note (optional)</label>
-                <Input
-                  placeholder="Reason for withdrawal..."
-                  value={withdrawForm.note}
-                  onChange={e => setWithdrawForm(p => ({ ...p, note: e.target.value }))}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20"
-                />
-              </div>
-              <div className="bg-amber-500/8 border border-amber-500/20 rounded-xl p-3">
-                <p className="text-amber-400/80 text-xs">⚠️ Withdrawal requests are processed manually. Funds will be transferred within 1–3 business days.</p>
-              </div>
-            </div>
-            <div className="flex gap-3 p-5 pt-0">
-              <Button variant="outline" onClick={() => setShowWithdrawModal(false)} className="flex-1 border-white/15 text-white/60 hover:bg-white/5">
-                Cancel
-              </Button>
-              <Button onClick={handleWithdraw} disabled={submitting} className="flex-1 bg-red-600 hover:bg-red-700 border-0 gap-2">
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowDownToLine className="w-4 h-4" />}
-                {submitting ? 'Submitting...' : 'Submit Request'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -307,9 +246,7 @@ export default function AdminWallet() {
               </span>
             )}
           </h3>
-          <Button onClick={() => setShowWithdrawModal(true)} size="sm" className="bg-red-600/20 hover:bg-red-600/40 text-red-300 border border-red-500/30 gap-1.5 text-xs">
-            <ArrowDownToLine className="w-3.5 h-3.5" /> Request Withdrawal
-          </Button>
+
         </div>
         <div className="p-5 space-y-3">
           {withdrawalRequests.length === 0 ? (
@@ -317,8 +254,9 @@ export default function AdminWallet() {
           ) : withdrawalRequests.map(w => (
             <div key={w.id} className="flex items-center gap-3 bg-white/[0.03] rounded-xl p-4 border border-white/5">
               <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm truncate">{w.description || 'Platform Withdrawal'}</p>
-                <p className="text-white/40 text-xs">{w.user_email} · {w.created_date ? format(new Date(w.created_date), 'MMM d, yyyy') : ''}</p>
+                <p className="text-white font-semibold text-sm">{w.user_name || w.user_email}</p>
+                <p className="text-white/50 text-xs truncate">{w.bank} •••• {w.account_number?.slice(-4)}</p>
+                <p className="text-white/30 text-xs">{w.user_email} · {w.created_date ? format(new Date(w.created_date), 'MMM d, yyyy') : ''}</p>
               </div>
               <div className="text-right mr-3 flex-shrink-0">
                 <p className="text-red-400 font-black">₦{(w.amount || 0).toLocaleString()}</p>
@@ -327,14 +265,16 @@ export default function AdminWallet() {
               <div className="flex gap-1 flex-shrink-0">
                 <button
                   disabled={approvingId === w.id}
-                  onClick={() => updateWithdrawal(w, 'completed')}
+                  onClick={() => approveWithdrawal(w)}
+                  title="Approve"
                   className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50"
                 >
                   {approvingId === w.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                 </button>
                 <button
                   disabled={approvingId === w.id}
-                  onClick={() => updateWithdrawal(w, 'failed')}
+                  onClick={() => rejectWithdrawal(w)}
+                  title="Reject"
                   className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50"
                 >
                   <XCircle className="w-4 h-4" />
