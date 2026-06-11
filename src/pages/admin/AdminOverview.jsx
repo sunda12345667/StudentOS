@@ -89,8 +89,8 @@ export default function AdminOverview() {
     <div className="space-y-6">
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Revenue" value={`₦${((totalCommission + adRevenue) || 0).toLocaleString()}`} sub="Commission + Ads" icon={DollarSign} iconColor="blue" />
-        <StatCard label="Commission Earned" value={`₦${(totalCommission || 0).toLocaleString()}`} sub={`${orders.length} orders processed`} icon={Percent} iconColor="purple" />
+        <StatCard label="Total Users" value={users.length} sub={`Active today: ${activeUsersToday}`} icon={Users} iconColor="blue" />
+        <StatCard label="Total Revenue" value={`₦${((totalCommission + adRevenue) || 0).toLocaleString()}`} sub="Commission + Ads" icon={DollarSign} iconColor="purple" />
         <StatCard label="Marketplace Sales" value={`₦${(totalSales || 0).toLocaleString()}`} sub={`${orders.length} total orders`} icon={ShoppingCart} iconColor="green" />
         <StatCard label="Active Ad Campaigns" value={activeAds} sub={`${advertisers.length} advertisers`} icon={Megaphone} iconColor="amber" />
       </div>
