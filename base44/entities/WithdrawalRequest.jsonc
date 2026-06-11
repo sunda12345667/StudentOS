@@ -14,7 +14,13 @@
     "bank": {
       "type": "string"
     },
+    "bank_code": {
+      "type": "string"
+    },
     "account_number": {
+      "type": "string"
+    },
+    "account_name": {
       "type": "string"
     },
     "note": {
@@ -27,7 +33,7 @@
         "approved",
         "rejected"
       ],
-      "default": "pending"
+      "default": "approved"
     },
     "admin_note": {
       "type": "string"

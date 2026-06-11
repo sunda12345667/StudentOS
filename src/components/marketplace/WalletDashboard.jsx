@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Wallet, ArrowDownLeft, ArrowUpRight, ShieldCheck, RefreshCw,
-  Loader2, Plus, Minus, TrendingUp, CreditCard, AlertCircle
+  Loader2, Plus, Minus, TrendingUp, CreditCard, AlertCircle, CheckCircle2, User
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -106,84 +106,212 @@ function FundModal({ open, onClose, user }) {
 }
 
 const STATUS_BADGE = {
-  pending:  { label: 'Pending Review', color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
-  approved: { label: 'Approved',       color: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' },
-  rejected: { label: 'Rejected',       color: 'bg-red-500/15 text-red-600 border-red-500/30' },
+  pending:  { label: 'Pending',  color: 'bg-amber-500/15 text-amber-600 border-amber-500/30' },
+  approved: { label: 'Processed', color: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30' },
+  rejected: { label: 'Rejected', color: 'bg-red-500/15 text-red-600 border-red-500/30' },
 };
+
+// Nigerian banks + fintechs with Paystack bank codes
+const NIGERIAN_BANKS = [
+  // Fintechs
+  { name: 'OPay', code: '999992' },
+  { name: 'PalmPay', code: '999991' },
+  { name: 'Moniepoint MFB', code: '50515' },
+  { name: 'Kuda MFB', code: '50211' },
+  { name: 'Carbon (One Finance)', code: '565' },
+  { name: 'FairMoney MFB', code: '51318' },
+  { name: 'VFD MFB', code: '566' },
+  { name: 'Chipper Cash', code: '52683' },
+  // Traditional banks
+  { name: 'Access Bank', code: '044' },
+  { name: 'Citibank', code: '023' },
+  { name: 'Ecobank', code: '050' },
+  { name: 'FCMB', code: '214' },
+  { name: 'Fidelity Bank', code: '070' },
+  { name: 'First Bank', code: '011' },
+  { name: 'GTCO (GTBank)', code: '058' },
+  { name: 'Heritage Bank', code: '030' },
+  { name: 'Jaiz Bank', code: '301' },
+  { name: 'Keystone Bank', code: '082' },
+  { name: 'Parallex Bank', code: '526' },
+  { name: 'Polaris Bank', code: '076' },
+  { name: 'Providus Bank', code: '101' },
+  { name: 'Stanbic IBTC', code: '221' },
+  { name: 'Standard Chartered', code: '068' },
+  { name: 'Sterling Bank', code: '232' },
+  { name: 'Suntrust Bank', code: '100' },
+  { name: 'UBA', code: '033' },
+  { name: 'Union Bank', code: '032' },
+  { name: 'Unity Bank', code: '215' },
+  { name: 'Wema Bank', code: '035' },
+  { name: 'Zenith Bank', code: '057' },
+];
 
 function WithdrawModal({ open, onClose, wallet, onSuccess }) {
   const [amount, setAmount] = useState('');
-  const [bank, setBank] = useState('');
+  const [selectedBank, setSelectedBank] = useState(null);
   const [account, setAccount] = useState('');
-  const [note, setNote] = useState('');
+  const [accountName, setAccountName] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Reset state when modal closes
+  const handleClose = () => {
+    setAmount(''); setSelectedBank(null); setAccount('');
+    setAccountName(''); setVerifyError('');
+    onClose();
+  };
+
+  // Auto-verify when account number is 10 digits and bank selected
+  useEffect(() => {
+    setAccountName('');
+    setVerifyError('');
+    if (!selectedBank || account.length !== 10) return;
+
+    const timer = setTimeout(async () => {
+      setVerifying(true);
+      try {
+        const res = await base44.functions.invoke('verifyBankAccount', {
+          account_number: account,
+          bank_code: selectedBank.code,
+        });
+        if (res.data?.account_name) {
+          setAccountName(res.data.account_name);
+        } else {
+          setVerifyError(res.data?.error || 'Account not found. Check details and try again.');
+        }
+      } catch (e) {
+        setVerifyError('Could not verify account. Please check the details.');
+      } finally {
+        setVerifying(false);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [account, selectedBank]);
 
   const withdraw = async () => {
     const amt = Number(amount);
     if (!amt || amt < 100) { toast.error('Minimum withdrawal is ₦100'); return; }
-    if (amt > wallet.balance) { toast.error('Insufficient balance'); return; }
-    if (!bank || !account || account.length < 10) { toast.error('Please enter valid bank details'); return; }
+    if (amt > (wallet?.balance || 0)) { toast.error('Insufficient wallet balance'); return; }
+    if (!accountName) { toast.error('Please verify your account number first'); return; }
+
     setLoading(true);
     try {
-      // Create a WithdrawalRequest — admin will approve/reject. Balance NOT deducted yet.
-      await base44.entities.WithdrawalRequest.create({
-        user_email: wallet.user_email,
-        user_name: wallet.user_name || '',
+      const res = await base44.functions.invoke('processWithdrawal', {
         amount: amt,
-        bank,
+        bank: selectedBank.name,
+        bank_code: selectedBank.code,
         account_number: account,
-        note: note || '',
-        status: 'pending',
-        wallet_id: wallet.id,
-        reference: `WD-${Date.now()}`,
+        account_name: accountName,
       });
-      toast.success('Withdrawal request submitted! You\'ll be notified once approved.');
-      onSuccess(wallet);
-      onClose();
-      setAmount(''); setBank(''); setAccount(''); setNote('');
+      if (res.data?.error) { toast.error(res.data.error); return; }
+      toast.success(res.data?.message || 'Withdrawal processed successfully!');
+      onSuccess();
+      handleClose();
     } catch (e) {
-      toast.error(e.message);
+      toast.error(e.message || 'Withdrawal failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const canSubmit = accountName && Number(amount) >= 100 && Number(amount) <= (wallet?.balance || 0) && !verifying;
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader><DialogTitle className="flex items-center gap-2"><ArrowUpRight className="w-5 h-5 text-violet-600" />Withdraw Funds</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
+          {/* Balance display */}
           <div className="rounded-xl bg-muted p-3 text-center">
             <p className="text-xs text-muted-foreground">Available balance</p>
             <p className="text-2xl font-black text-primary">₦{(wallet?.balance || 0).toLocaleString()}</p>
           </div>
+
+          {/* Bank selector */}
           <div>
-            <label className="text-xs font-medium mb-1 block">Amount to withdraw (₦) *</label>
-            <Input type="number" placeholder="e.g. 5000" value={amount} onChange={e => setAmount(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs font-medium mb-1 block">Bank *</label>
-            <select value={bank} onChange={e => setBank(e.target.value)} className="w-full bg-background border border-input text-foreground text-sm rounded-md px-3 py-2">
-              <option value="">Select bank...</option>
-              {['GTBank','Zenith Bank','Access Bank','First Bank','UBA','Fidelity Bank','FCMB','Stanbic IBTC','Polaris Bank','Keystone Bank'].map(b => (
-                <option key={b} value={b}>{b}</option>
-              ))}
+            <label className="text-xs font-medium mb-1 block">Bank / Fintech *</label>
+            <select
+              value={selectedBank?.code || ''}
+              onChange={e => {
+                const b = NIGERIAN_BANKS.find(b => b.code === e.target.value);
+                setSelectedBank(b || null);
+                setAccount(''); setAccountName(''); setVerifyError('');
+              }}
+              className="w-full bg-background border border-input text-foreground text-sm rounded-md px-3 py-2"
+            >
+              <option value="">Select bank or fintech...</option>
+              <optgroup label="🚀 Fintechs">
+                {NIGERIAN_BANKS.slice(0, 8).map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+              </optgroup>
+              <optgroup label="🏦 Commercial Banks">
+                {NIGERIAN_BANKS.slice(8).map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+              </optgroup>
             </select>
           </div>
+
+          {/* Account number with live verification */}
           <div>
             <label className="text-xs font-medium mb-1 block">Account Number *</label>
-            <Input type="text" placeholder="10-digit account number" maxLength={10} value={account} onChange={e => setAccount(e.target.value.replace(/\D/g, ''))} className="font-mono" />
+            <div className="relative">
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="10-digit account number"
+                maxLength={10}
+                value={account}
+                onChange={e => setAccount(e.target.value.replace(/\D/g, ''))}
+                className="font-mono pr-10"
+                disabled={!selectedBank}
+              />
+              {verifying && <Loader2 className="absolute right-3 top-2.5 w-4 h-4 animate-spin text-muted-foreground" />}
+              {accountName && !verifying && <CheckCircle2 className="absolute right-3 top-2.5 w-4 h-4 text-emerald-500" />}
+            </div>
+
+            {/* Account name result */}
+            {accountName && (
+              <div className="mt-2 flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 border border-emerald-200">
+                <User className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <div>
+                  <p className="text-xs text-emerald-600 font-bold">{accountName}</p>
+                  <p className="text-[10px] text-emerald-500">Account verified ✓</p>
+                </div>
+              </div>
+            )}
+            {verifyError && (
+              <div className="mt-2 flex items-center gap-2 p-2.5 rounded-lg bg-red-50 border border-red-200">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-xs text-red-600">{verifyError}</p>
+              </div>
+            )}
+            {!selectedBank && <p className="text-[10px] text-muted-foreground mt-1">Select a bank first</p>}
           </div>
+
+          {/* Amount */}
           <div>
-            <label className="text-xs font-medium mb-1 block">Note (optional)</label>
-            <Input placeholder="Reason..." value={note} onChange={e => setNote(e.target.value)} />
+            <label className="text-xs font-medium mb-1 block">Amount (₦) *</label>
+            <Input
+              type="number"
+              placeholder="e.g. 5000"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              min={100}
+              max={wallet?.balance || 0}
+            />
+            {Number(amount) > (wallet?.balance || 0) && (
+              <p className="text-xs text-red-500 mt-1">Amount exceeds available balance</p>
+            )}
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-            <p className="text-xs text-amber-700">⚠️ Withdrawal requests are reviewed by admin. Balance is deducted upon approval within 1–3 business days.</p>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <p className="text-xs text-blue-700">💡 Withdrawals are processed instantly after account verification. Funds typically arrive within minutes to hours depending on your bank.</p>
           </div>
-          <Button onClick={withdraw} disabled={loading || !amount} className="w-full gap-2 bg-violet-600 hover:bg-violet-700 border-0 text-white">
+
+          <Button onClick={withdraw} disabled={loading || !canSubmit} className="w-full gap-2 bg-violet-600 hover:bg-violet-700 border-0 text-white">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Minus className="w-4 h-4" />}
-            {loading ? 'Submitting...' : 'Submit Withdrawal Request'}
+            {loading ? 'Processing...' : `Withdraw ₦${Number(amount || 0).toLocaleString()}`}
           </Button>
         </div>
       </DialogContent>
@@ -415,12 +543,12 @@ export default function WalletDashboard({ user }) {
         ))}
       </div>
 
-      {/* Withdrawal Request Tracker */}
+      {/* Withdrawal History */}
       {withdrawalRequests.length > 0 && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <ArrowUpRight className="w-4 h-4 text-violet-600" />Withdrawal Requests
+              <ArrowUpRight className="w-4 h-4 text-violet-600" />Withdrawal History
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0 px-4 pb-3 space-y-2">
@@ -430,9 +558,10 @@ export default function WalletDashboard({ user }) {
                 <div key={wr.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">₦{(wr.amount || 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">{wr.bank} · Acct: {wr.account_number}</p>
-                    <p className="text-[10px] text-muted-foreground">{wr.created_date ? format(new Date(wr.created_date), 'MMM d, yyyy') : ''}</p>
-                    {wr.admin_note && <p className="text-xs text-muted-foreground mt-0.5 italic text-amber-600">Admin: "{wr.admin_note}"</p>}
+                    <p className="text-xs text-muted-foreground">{wr.account_name || ''} · {wr.bank}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">{wr.account_number}</p>
+                    <p className="text-[10px] text-muted-foreground">{wr.created_date ? format(new Date(wr.created_date), 'MMM d, yyyy · h:mm a') : ''}</p>
+                    {wr.admin_note && <p className="text-xs text-muted-foreground mt-0.5 italic text-amber-600">Note: "{wr.admin_note}"</p>}
                   </div>
                   <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${badge.color}`}>
                     {badge.label}
@@ -467,7 +596,7 @@ export default function WalletDashboard({ user }) {
       </Card>
 
       <FundModal open={fundOpen} onClose={() => setFundOpen(false)} user={user} />
-      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} wallet={wallet} onSuccess={w => { setWallet(w); load(); }} />
+      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} wallet={wallet} onSuccess={() => load()} />
     </div>
   );
 }
