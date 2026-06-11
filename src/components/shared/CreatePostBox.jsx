@@ -46,7 +46,7 @@ export default function CreatePostBox({ user, userProfile, onPosted, extraData =
       content: content.trim(), image_url, video_url, tags,
       author_name: user.full_name, author_email: user.email,
       author_avatar: user.avatar_url || '',
-      author_role: user.role || 'student',
+      author_role: userProfile?.role || 'student',
       school_name: userProfile?.school_name || '',
       department: userProfile?.department || '',
       grade_level: userProfile?.grade_level || '',
