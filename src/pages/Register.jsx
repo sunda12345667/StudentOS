@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { motion } from "framer-motion";
-import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, User, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, GraduationCap, BookOpen, CheckCircle2 } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/components/ui/use-toast";
 import ImmersiveLeft from "../components/auth/ImmersiveLeft";
@@ -38,6 +38,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState("student");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
@@ -65,7 +66,13 @@ export default function Register() {
     setLoading(true);
     try {
       const result = await base44.auth.verifyOtp({ email, otpCode });
-      if (result?.access_token) base44.auth.setToken(result.access_token);
+      if (result?.access_token) {
+        base44.auth.setToken(result.access_token);
+        // Save role to UserProfile
+        try {
+          await base44.entities.UserProfile.create({ user_email: email, role });
+        } catch (_) { /* profile may already exist */ }
+      }
       window.location.href = "/";
     } catch (err) {
       setError(err.message || "Invalid verification code");
@@ -188,6 +195,25 @@ export default function Register() {
               {error}
             </motion.div>
           )}
+
+          {/* Role selector */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            {[
+              { value: 'student', label: 'Student', icon: GraduationCap, desc: "I'm here to learn" },
+              { value: 'teacher', label: 'Lecturer', icon: BookOpen, desc: "I'm here to teach" },
+            ].map(({ value, label, icon: Icon, desc }) => (
+              <button key={value} type="button" onClick={() => setRole(value)}
+                className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all duration-200 ${
+                  role === value
+                    ? 'border-purple-500/60 bg-purple-500/10 text-white'
+                    : 'border-white/[0.08] bg-white/[0.03] text-white/40 hover:border-white/20 hover:text-white/60'
+                }`}>
+                <Icon className={`w-5 h-5 ${role === value ? 'text-purple-400' : ''}`} />
+                <span className="text-sm font-semibold">{label}</span>
+                <span className="text-[10px] opacity-60">{desc}</span>
+              </button>
+            ))}
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {/* Email */}
