@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { motion } from "framer-motion";
-import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, GraduationCap, BookOpen, CheckCircle2 } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowRight, Eye, EyeOff, GraduationCap, BookOpen, CheckCircle2, Upload, FileCheck, SkipForward } from "lucide-react";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "@/components/ui/use-toast";
 import ImmersiveLeft from "../components/auth/ImmersiveLeft";
@@ -42,9 +42,15 @@ export default function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  // Verification doc upload state
+  const [docFile, setDocFile] = useState(null);
+  const [institution, setInstitution] = useState("");
+  const [verifyNotes, setVerifyNotes] = useState("");
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -68,16 +74,41 @@ export default function Register() {
       const result = await base44.auth.verifyOtp({ email, otpCode });
       if (result?.access_token) {
         base44.auth.setToken(result.access_token);
-        // Save role to UserProfile
         try {
           await base44.entities.UserProfile.create({ user_email: email, role });
         } catch (_) { /* profile may already exist */ }
       }
-      window.location.href = "/";
+      // Show document upload step
+      setShowOtp(false);
+      setShowVerification(true);
     } catch (err) {
       setError(err.message || "Invalid verification code");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUploadDoc = async () => {
+    if (!docFile) { toast({ title: "No file selected", description: "Please choose a document to upload." }); return; }
+    setUploadLoading(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: docFile });
+      await base44.entities.VerificationRequest.create({
+        user_email: email,
+        user_name: email.split('@')[0],
+        role,
+        document_url: file_url,
+        document_name: docFile.name,
+        institution: institution.trim(),
+        notes: verifyNotes.trim(),
+        status: 'pending',
+      });
+      toast({ title: "Verification submitted!", description: "An admin will review your document shortly." });
+    } catch (e) {
+      toast({ title: "Upload failed", description: e.message });
+    } finally {
+      setUploadLoading(false);
+      window.location.href = "/";
     }
   };
 
@@ -94,6 +125,97 @@ export default function Register() {
 
   const inputClass = (field) => `relative flex items-center rounded-xl border transition-all duration-300 overflow-hidden
     ${focusedField === field ? 'border-blue-500/50 bg-white/[0.06]' : 'border-white/[0.08] bg-white/[0.03]'}`;
+
+  // Document upload / verification screen
+  if (showVerification) {
+    return (
+      <div className="min-h-screen flex bg-[#030712]">
+        <div className="hidden lg:flex lg:w-[55%] xl:w-[60%] flex-shrink-0"><ImmersiveLeft /></div>
+        <div className="flex-1 flex items-center justify-center p-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0a0f2e] via-[#030712] to-[#0d0521]" />
+          <div className="absolute top-1/3 left-1/3 w-64 h-64 bg-emerald-600/10 rounded-full blur-[80px]" />
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6 }}
+            className="relative z-10 w-full max-w-sm">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
+              {role === 'teacher' ? <BookOpen className="w-7 h-7 text-emerald-400" /> : <GraduationCap className="w-7 h-7 text-emerald-400" />}
+            </div>
+            <h2 className="text-white font-black text-3xl mb-1 tracking-tight text-center">Verify Your Status</h2>
+            <p className="text-white/40 text-sm mb-6 text-center">
+              Upload a document to get a <span className="text-emerald-400 font-medium">verified badge</span> as a {role === 'teacher' ? 'Lecturer' : 'Student'}.
+            </p>
+
+            <div className="space-y-3">
+              {/* Institution */}
+              <div>
+                <label className="text-white/50 text-xs mb-1 block">Institution / School name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. University of Lagos"
+                  value={institution}
+                  onChange={e => setInstitution(e.target.value)}
+                  className="w-full h-11 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 text-white text-sm placeholder-white/25 outline-none focus:border-blue-500/40 transition-colors"
+                />
+              </div>
+
+              {/* Document upload */}
+              <div>
+                <label className="text-white/50 text-xs mb-1 block">
+                  {role === 'teacher' ? 'Staff ID / Appointment letter' : 'Student ID / Admission letter'}
+                </label>
+                <label className={`flex flex-col items-center justify-center gap-2 w-full h-28 rounded-xl border-2 border-dashed cursor-pointer transition-all ${
+                  docFile ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-white/10 bg-white/[0.02] hover:border-white/20'
+                }`}>
+                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" className="hidden"
+                    onChange={e => setDocFile(e.target.files?.[0] || null)} />
+                  {docFile ? (
+                    <>
+                      <FileCheck className="w-6 h-6 text-emerald-400" />
+                      <p className="text-emerald-400 text-xs font-medium text-center px-4 truncate max-w-full">{docFile.name}</p>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-6 h-6 text-white/30" />
+                      <p className="text-white/30 text-xs text-center">Click to upload PDF, JPG, PNG or DOC</p>
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Optional notes */}
+              <div>
+                <label className="text-white/50 text-xs mb-1 block">Additional notes (optional)</label>
+                <input
+                  type="text"
+                  placeholder="Any extra info for the admin..."
+                  value={verifyNotes}
+                  onChange={e => setVerifyNotes(e.target.value)}
+                  className="w-full h-11 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 text-white text-sm placeholder-white/25 outline-none focus:border-blue-500/40 transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 mt-5">
+              <motion.button
+                onClick={handleUploadDoc}
+                disabled={uploadLoading || !docFile}
+                whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-500 hover:to-blue-500 text-white font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                {uploadLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Uploading...</> : <><Upload className="w-4 h-4" />Submit for Verification</>}
+              </motion.button>
+              <button
+                onClick={() => window.location.href = '/'}
+                className="w-full h-11 rounded-xl border border-white/[0.08] text-white/40 hover:text-white/70 text-sm flex items-center justify-center gap-2 transition-colors"
+              >
+                <SkipForward className="w-4 h-4" />Skip for now
+              </button>
+            </div>
+            <p className="text-white/20 text-[10px] text-center mt-4">You can submit verification later from your profile settings.</p>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   // OTP screen
   if (showOtp) {
