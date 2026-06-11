@@ -5,6 +5,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   DollarSign, Percent, Megaphone, Clock,
   CheckCircle2, XCircle, ArrowDownToLine, Loader2, RefreshCw
@@ -42,6 +43,8 @@ export default function AdminWallet() {
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [txFilter, setTxFilter] = useState('all');
   const [approvingId, setApprovingId] = useState(null);
+  const [rejectNote, setRejectNote] = useState('');
+  const [rejectingId, setRejectingId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -163,24 +166,31 @@ export default function AdminWallet() {
   };
 
   // Reject a withdrawal request
-  const rejectWithdrawal = async (wr, adminNote = '') => {
-    setApprovingId(wr.id);
-    try {
-      await base44.entities.WithdrawalRequest.update(wr.id, { status: 'rejected', admin_note: adminNote });
-
-      await base44.entities.Notification.create({
-        user_email: wr.user_email,
-        type: 'marketplace',
-        content: `Your withdrawal request of ₦${wr.amount.toLocaleString()} was not approved.${adminNote ? ' Reason: ' + adminNote : ''}`,
-        is_read: false,
-      });
-
-      setWithdrawalRequests(prev => prev.filter(w => w.id !== wr.id));
-      toast.success('Withdrawal rejected and user notified');
-    } catch (e) {
-      toast.error(e.message);
-    } finally {
-      setApprovingId(null);
+  const rejectWithdrawal = async (wr) => {
+    if (rejectingId === wr.id) {
+      // Second click = confirm with note
+      setApprovingId(wr.id);
+      try {
+        await base44.entities.WithdrawalRequest.update(wr.id, { status: 'rejected', admin_note: rejectNote || '' });
+        await base44.entities.Notification.create({
+          user_email: wr.user_email,
+          type: 'marketplace',
+          content: `Your withdrawal request of ₦${wr.amount.toLocaleString()} was not approved.${rejectNote ? ' Reason: ' + rejectNote : ''}`,
+          is_read: false,
+        });
+        setWithdrawalRequests(prev => prev.filter(w => w.id !== wr.id));
+        setRejectingId(null);
+        setRejectNote('');
+        toast.success('Withdrawal rejected and user notified');
+      } catch (e) {
+        toast.error(e.message);
+      } finally {
+        setApprovingId(null);
+      }
+    } else {
+      // First click = enter note mode
+      setRejectingId(wr.id);
+      setRejectNote('');
     }
   };
 
@@ -252,34 +262,51 @@ export default function AdminWallet() {
           {withdrawalRequests.length === 0 ? (
             <p className="text-white/30 text-sm text-center py-4">No pending withdrawal requests</p>
           ) : withdrawalRequests.map(w => (
-            <div key={w.id} className="flex items-center gap-3 bg-white/[0.03] rounded-xl p-4 border border-white/5">
-              <div className="flex-1 min-w-0">
-                <p className="text-white font-semibold text-sm">{w.user_name || w.user_email}</p>
-                <p className="text-white/50 text-xs truncate">{w.bank} •••• {w.account_number?.slice(-4)}</p>
-                <p className="text-white/30 text-xs">{w.user_email} · {w.created_date ? format(new Date(w.created_date), 'MMM d, yyyy') : ''}</p>
+            <div key={w.id} className="bg-white/[0.03] rounded-xl p-4 border border-white/5 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-sm">{w.user_name || w.user_email}</p>
+                  <p className="text-white/50 text-xs truncate">{w.bank} · Acct: {w.account_number}</p>
+                  <p className="text-white/30 text-xs">{w.user_email} · {w.created_date ? format(new Date(w.created_date), 'MMM d, yyyy') : ''}</p>
+                  {w.note && <p className="text-white/40 text-xs italic mt-0.5">"{w.note}"</p>}
+                </div>
+                <div className="text-right mr-2 flex-shrink-0">
+                  <p className="text-amber-400 font-black text-lg">₦{(w.amount || 0).toLocaleString()}</p>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${STATUS_CFG['pending']?.class}`}>Pending</span>
+                </div>
+                <div className="flex gap-1 flex-shrink-0">
+                  <button
+                    disabled={approvingId === w.id}
+                    onClick={() => approveWithdrawal(w)}
+                    title="Approve"
+                    className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50"
+                  >
+                    {approvingId === w.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  </button>
+                  <button
+                    disabled={approvingId === w.id}
+                    onClick={() => rejectWithdrawal(w)}
+                    title={rejectingId === w.id ? 'Confirm Reject' : 'Reject'}
+                    className={`p-1.5 rounded-lg disabled:opacity-50 transition-colors ${rejectingId === w.id ? 'bg-red-500/30 text-red-300' : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'}`}
+                  >
+                    {approvingId === w.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
-              <div className="text-right mr-3 flex-shrink-0">
-                <p className="text-red-400 font-black">₦{(w.amount || 0).toLocaleString()}</p>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${STATUS_CFG['pending']?.class}`}>Pending</span>
-              </div>
-              <div className="flex gap-1 flex-shrink-0">
-                <button
-                  disabled={approvingId === w.id}
-                  onClick={() => approveWithdrawal(w)}
-                  title="Approve"
-                  className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50"
-                >
-                  {approvingId === w.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                </button>
-                <button
-                  disabled={approvingId === w.id}
-                  onClick={() => rejectWithdrawal(w)}
-                  title="Reject"
-                  className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50"
-                >
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </div>
+              {/* Reject note input — shown on first reject click */}
+              {rejectingId === w.id && (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    value={rejectNote}
+                    onChange={e => setRejectNote(e.target.value)}
+                    placeholder="Rejection reason (optional)..."
+                    className="bg-white/5 border-white/10 text-white text-xs h-8"
+                    autoFocus
+                  />
+                  <button onClick={() => { setRejectingId(null); setRejectNote(''); }} className="text-white/30 hover:text-white/60 text-xs whitespace-nowrap">Cancel</button>
+                  <button onClick={() => rejectWithdrawal(w)} className="bg-red-500/20 text-red-400 hover:bg-red-500/30 text-xs px-3 py-1.5 rounded-lg whitespace-nowrap font-semibold">Confirm</button>
+                </div>
+              )}
             </div>
           ))}
         </div>

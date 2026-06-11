@@ -223,6 +223,7 @@ export default function WalletDashboard({ user }) {
   const [loading, setLoading] = useState(true);
   const [fundOpen, setFundOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [paymentBanner, setPaymentBanner] = useState(null); // 'verifying' | 'success' | 'cancelled' | null
 
   const load = useCallback(async () => {
     if (!user?.email) return;
@@ -279,29 +280,36 @@ export default function WalletDashboard({ user }) {
   }, [user?.email, load]);
 
   // Handle redirect back from Paystack — verify + credit immediately, then poll as fallback
-  const params = new URLSearchParams(window.location.search);
-  const walletStatus = params.get('wallet');
-  const paystackRef = params.get('reference') || params.get('trxref');
-
   useEffect(() => {
-    if (walletStatus !== 'funded' || !user?.email) return;
+    const params = new URLSearchParams(window.location.search);
+    const walletStatus = params.get('wallet');
+    const paystackRef = params.get('reference') || params.get('trxref');
 
     // Clean up URL immediately
     const newParams = new URLSearchParams(window.location.search);
     newParams.delete('wallet');
     newParams.delete('reference');
     newParams.delete('trxref');
-    const newSearch = newParams.toString();
-    window.history.replaceState({}, '', `${window.location.pathname}${newSearch ? '?' + newSearch : ''}`);
+    window.history.replaceState({}, '', `${window.location.pathname}${newParams.toString() ? '?' + newParams.toString() : ''}`);
 
-    // Step 1: If Paystack gave us a reference, verify & credit immediately via backend
+    if (walletStatus === 'cancelled') {
+      setPaymentBanner('cancelled');
+      setTimeout(() => setPaymentBanner(null), 5000);
+      return;
+    }
+
+    if (walletStatus !== 'funded' || !user?.email) return;
+    setPaymentBanner('verifying');
+
     const verifyAndCredit = async () => {
       if (paystackRef) {
         try {
           const res = await base44.functions.invoke('paystackWebhookVerify', { reference: paystackRef, user_email: user.email, user_name: user.full_name });
           if (res.data?.credited) {
             await load();
+            setPaymentBanner('success');
             toast.success('Wallet funded successfully! 🎉');
+            setTimeout(() => setPaymentBanner(null), 5000);
             return true;
           }
         } catch (_) { /* fall through to polling */ }
@@ -309,7 +317,6 @@ export default function WalletDashboard({ user }) {
       return false;
     };
 
-    // Step 2: Poll for webhook-triggered balance change as fallback
     let baselineBalance = null;
     let attempts = 0;
     const maxAttempts = 12;
@@ -320,17 +327,18 @@ export default function WalletDashboard({ user }) {
       const wallets = await base44.entities.Wallet.filter({ user_email: user.email });
       const w = wallets[0];
       const currentBalance = w?.balance || 0;
-
       if (baselineBalance === null) baselineBalance = currentBalance;
-
       if (currentBalance > baselineBalance) {
         setWallet(w);
         await load();
+        setPaymentBanner('success');
         toast.success('Wallet funded successfully! 🎉');
+        setTimeout(() => setPaymentBanner(null), 5000);
       } else if (attempts < maxAttempts) {
         timerId = setTimeout(poll, 2000);
       } else {
         await load();
+        setPaymentBanner(null);
       }
     };
 
@@ -339,7 +347,7 @@ export default function WalletDashboard({ user }) {
     });
 
     return () => clearTimeout(timerId);
-  }, [walletStatus, user?.email, load]);
+  }, [user?.email]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 
@@ -352,16 +360,22 @@ export default function WalletDashboard({ user }) {
 
   return (
     <div className="space-y-6">
-      {walletStatus === 'funded' && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
-          <CreditCard className="w-4 h-4 flex-shrink-0" />
-          Payment successful! Verifying with Paystack — your balance will update in a moment...
+      {paymentBanner === 'verifying' && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm">
+          <Loader2 className="w-4 h-4 flex-shrink-0 animate-spin" />
+          Payment received! Verifying with Paystack — your balance will update in a moment...
         </div>
       )}
-      {walletStatus === 'cancelled' && (
+      {paymentBanner === 'success' && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm">
+          <CreditCard className="w-4 h-4 flex-shrink-0" />
+          Wallet funded successfully! Your balance has been updated.
+        </div>
+      )}
+      {paymentBanner === 'cancelled' && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-sm">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Payment was cancelled.
+          Payment was cancelled. No funds were deducted.
         </div>
       )}
 
@@ -416,8 +430,9 @@ export default function WalletDashboard({ user }) {
                 <div key={wr.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">₦{(wr.amount || 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground truncate">{wr.bank} •••• {wr.account_number?.slice(-4)}</p>
-                    {wr.admin_note && <p className="text-xs text-muted-foreground mt-0.5 italic">"{wr.admin_note}"</p>}
+                    <p className="text-xs text-muted-foreground">{wr.bank} · Acct: {wr.account_number}</p>
+                    <p className="text-[10px] text-muted-foreground">{wr.created_date ? format(new Date(wr.created_date), 'MMM d, yyyy') : ''}</p>
+                    {wr.admin_note && <p className="text-xs text-muted-foreground mt-0.5 italic text-amber-600">Admin: "{wr.admin_note}"</p>}
                   </div>
                   <span className={`text-[10px] font-semibold px-2 py-1 rounded-lg border ${badge.color}`}>
                     {badge.label}
