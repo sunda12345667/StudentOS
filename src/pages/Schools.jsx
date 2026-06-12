@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Plus, School, Users, CheckCircle, Globe, MapPin, Loader2 } from 'lucide-react';
+import { Search, Plus, School, Users, CheckCircle, Globe, MapPin, Loader2, Eye } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const TYPE_LABELS = { k12: 'K-12', university: 'University', vocational: 'Vocational', online: 'Online', tutoring: 'Tutoring' };
@@ -32,15 +32,15 @@ export default function Schools() {
   const handleCreate = async () => {
     if (!form.name.trim()) return;
     setCreating(true);
-    await base44.entities.School.create({
+    const created = await base44.entities.School.create({
       ...form, admin_email: user.email,
-      member_emails: [user.email], student_count: 0, verified: false,
+      member_emails: [user.email], student_count: 1, verified: false,
     });
-    const updated = await base44.entities.School.list('-created_date', 50);
-    setSchools(updated);
     setOpen(false);
     setForm({ name: '', description: '', type: 'k12', address: '', website: '' });
     setCreating(false);
+    // Navigate directly to the new school page
+    window.location.href = `/schools/${created.id}`;
   };
 
   const handleJoin = async (school) => {
@@ -122,15 +122,18 @@ export default function Schools() {
                     <p className="text-xs text-muted-foreground mt-2 line-clamp-2">{school.description}</p>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Users className="w-3.5 h-3.5" />{school.student_count || 0} members
+                        <Users className="w-3.5 h-3.5" />{school.member_emails?.length || school.student_count || 0} members
                       </div>
-                      {isMember || isAdmin ? (
+                      <div className="flex gap-1.5">
                         <Link to={`/schools/${school.id}`}>
-                          <Button size="sm" variant="secondary" className="h-7 text-xs">View</Button>
+                          <Button size="sm" variant="secondary" className="h-7 text-xs gap-1">
+                            <Eye className="w-3 h-3" />View
+                          </Button>
                         </Link>
-                      ) : (
-                        <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(school)}>Join</Button>
-                      )}
+                        {!isMember && !isAdmin && (
+                          <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(school)}>Join</Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Card>

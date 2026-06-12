@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Percent, Megaphone, Building2, Wallet,
-  BarChart3, Bell, Settings, ChevronLeft, ChevronRight, Zap, X, Flag, Users
+  BarChart3, Bell, Settings, ChevronLeft, ChevronRight, Zap, X, Flag, Users, ShoppingBag
 } from 'lucide-react';
 
 const NAV = [
@@ -14,6 +14,7 @@ const NAV = [
   { label: 'Advertisers',    path: '/admin/advertisers',  icon: Building2 },
   { label: 'Wallet & Revenue', path: '/admin/wallet',     icon: Wallet },
   { label: 'Analytics',      path: '/admin/analytics',    icon: BarChart3 },
+  { label: 'Marketplace',    path: '/admin/marketplace',  icon: ShoppingBag },
   { label: 'Reports',        path: '/admin/reports',      icon: Flag },
   { label: 'Notifications',  path: '/admin/notifications', icon: Bell },
   { label: 'Settings',       path: '/admin/settings',     icon: Settings },

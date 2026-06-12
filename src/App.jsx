@@ -44,6 +44,8 @@ import AdminNotifications from '@/pages/admin/AdminNotifications';
 import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminReports from '@/pages/admin/AdminReports';
 import AdminUsers from '@/pages/admin/AdminUsers';
+import AdminMarketplace from '@/pages/admin/AdminMarketplace';
+import SchoolDetail from '@/pages/SchoolDetail';
 import AdvertiserPortal from '@/pages/advertiser/AdvertiserPortal';
 
 const AuthenticatedApp = () => {
@@ -79,7 +81,7 @@ const AuthenticatedApp = () => {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Feed />} />
           <Route path="/schools" element={<Schools />} />
-          <Route path="/schools/:id" element={<Schools />} />
+          <Route path="/schools/:id" element={<SchoolDetail />} />
           <Route path="/classroom" element={<Classroom />} />
           <Route path="/classroom/:id" element={<CourseDetail />} />
           <Route path="/communities" element={<Communities />} />
@@ -109,6 +111,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin/wallet" element={<AdminWallet />} />
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/reports" element={<AdminReports />} />
+          <Route path="/admin/marketplace" element={<AdminMarketplace />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route path="/admin/settings" element={<AdminSettings />} />

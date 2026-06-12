@@ -37,11 +37,37 @@ export default function CreatePostBox({ user, userProfile, onPosted, extraData =
   const handlePost = async () => {
     if (!content.trim() && !imageFile && !videoFile) return;
     setPosting(true);
+
+    // AI content moderation — check for non-educational / prohibited content
+    if (content.trim()) {
+      const modResult = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a content moderator for an educational platform (StudentOS). Analyze the following post and determine if it is appropriate for an educational social platform.
+
+Allowed: educational discussions, academic resources, study tips, research, school announcements, career development, learning-related content, questions, study notes.
+Prohibited: politics unrelated to education, betting/gambling, adult content, hate speech, harassment, fake news, entertainment gossip, spam, fraud, irrelevant advertisements.
+
+Post content: "${content.trim()}"
+
+Respond ONLY with a JSON object: {"allowed": true/false, "reason": "brief reason if rejected"}`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            allowed: { type: 'boolean' },
+            reason: { type: 'string' }
+          }
+        }
+      });
+      if (!modResult?.allowed) {
+        setPosting(false);
+        alert(`⚠️ Post blocked: ${modResult?.reason || 'This content does not meet StudentOS educational guidelines.'}`);
+        return;
+      }
+    }
+
     let image_url = '', video_url = '';
     if (imageFile) { const r = await base44.integrations.Core.UploadFile({ file: imageFile }); image_url = r.file_url; }
     if (videoFile) { const r = await base44.integrations.Core.UploadFile({ file: videoFile }); video_url = r.file_url; }
     const tags = extractHashtags(content);
-    // Embed profile metadata directly on the post — avoids per-card profile fetches
     await base44.entities.Post.create({
       content: content.trim(), image_url, video_url, tags,
       author_name: user.full_name, author_email: user.email,
