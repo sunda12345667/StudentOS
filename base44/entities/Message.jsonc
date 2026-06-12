@@ -17,6 +17,22 @@
     "content": {
       "type": "string"
     },
+    "attachment_url": {
+      "type": "string"
+    },
+    "attachment_type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "pdf",
+        "document",
+        "audio"
+      ]
+    },
+    "attachment_name": {
+      "type": "string"
+    },
     "read_by": {
       "type": "array",
       "items": {
@@ -26,7 +42,6 @@
   },
   "required": [
     "conversation_id",
-    "sender_email",
-    "content"
+    "sender_email"
   ]
 }

@@ -155,35 +155,20 @@ export default function Messages() {
     }).finally(() => setRoomsLoading(false));
   }, [user?.email]);
 
-  const sendDM = useCallback(async (e) => {
-    e.preventDefault();
-    if (!text.trim() || sending) return;
-    setSending(true);
-    const msgContent = text.trim();
-    // Clear text first so UI feels instant
-    setText('');
-    // Re-focus textarea after clearing (keeps mobile keyboard open)
-    requestAnimationFrame(() => {
-      inputRef.current?.focus({ preventScroll: true });
-    });
+  const createAndAppendMessage = useCallback(async (payload) => {
     const msg = await base44.entities.Message.create({
       conversation_id: selected.id,
       sender_email: user.email,
       sender_name: user.full_name,
       sender_avatar: user.avatar_url || '',
-      content: msgContent,
       read_by: [user.email],
+      ...payload,
     });
-    // Only append if subscription didn't already add it
     setMessages(p => p.find(m => m.id === msg.id) ? p : [...p, msg]);
-    setSending(false);
-
-    // Update convo
+    const lastMsg = payload.attachment_name ? `📎 ${payload.attachment_name}` : payload.content;
     await base44.entities.Conversation.update(selected.id, {
-      last_message: msgContent, last_message_time: new Date().toISOString(), last_sender: user.email,
+      last_message: lastMsg, last_message_time: new Date().toISOString(), last_sender: user.email,
     });
-
-    // Create notification for the other participant
     const otherEmail = selected.participants?.find(e => e !== user.email);
     if (otherEmail) {
       base44.entities.Notification.create({
@@ -192,13 +177,32 @@ export default function Messages() {
         from_avatar: user.avatar_url || '',
         from_email: user.email,
         type: 'message',
-        content: `sent you a message: "${msgContent.slice(0, 60)}${msgContent.length > 60 ? '...' : ''}"`,
+        content: `sent you a message: "${lastMsg?.slice(0, 60)}"`,
         entity_type: 'conversation',
         entity_id: selected.id,
         is_read: false,
       }).catch(() => {});
     }
-  }, [text, sending, selected?.id, user?.email, user?.full_name, user?.avatar_url]);
+    return msg;
+  }, [selected?.id, user?.email, user?.full_name, user?.avatar_url]);
+
+  const sendDM = useCallback(async (e) => {
+    e.preventDefault();
+    if (!text.trim() || sending) return;
+    setSending(true);
+    const msgContent = text.trim();
+    setText('');
+    requestAnimationFrame(() => { inputRef.current?.focus({ preventScroll: true }); });
+    await createAndAppendMessage({ content: msgContent });
+    setSending(false);
+  }, [text, sending, createAndAppendMessage]);
+
+  const sendAttachment = useCallback(async (attachData) => {
+    if (!selected?.id) return;
+    setSending(true);
+    await createAndAppendMessage(attachData);
+    setSending(false);
+  }, [selected?.id, createAndAppendMessage, sending]);
 
   const searchUsers = async (q) => {
     setSearch(q);
@@ -392,7 +396,7 @@ export default function Messages() {
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth">
                   <MessageList messages={messages} msgsLoading={msgsLoading} userEmail={user?.email} otherName={other?.name} bottomRef={bottomRef} />
                 </div>
-                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} onFocusChange={setInputFocused} />
+                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} onFocusChange={setInputFocused} onSendAttachment={sendAttachment} />
               </>
             )}
           </div>
@@ -430,7 +434,7 @@ export default function Messages() {
                 <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 scroll-smooth">
                   <MessageList messages={messages} msgsLoading={msgsLoading} userEmail={user?.email} otherName={other?.name} bottomRef={bottomRef} />
                 </div>
-                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} />
+                <ChatComposer value={text} onChange={e => setText(e.target.value)} onSubmit={sendDM} disabled={sending} inputRef={inputRef} onSendAttachment={sendAttachment} />
               </div>
             )
           ) : selectedRoom ? (
@@ -472,11 +476,26 @@ function MessageList({ messages, msgsLoading, userEmail, otherName, bottomRef })
             {!isMine && !showAvatar && <div className="w-7" />}
             <div className="flex flex-col max-w-[75%]">
               <div className={cn(
-                "px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words",
-                isMine ? "gradient-brand text-white rounded-br-sm shadow-md shadow-primary/15" : "bg-muted rounded-bl-sm border border-border/30"
-              )}>
-                {msg.content}
-              </div>
+                    "px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words",
+                    isMine ? "gradient-brand text-white rounded-br-sm shadow-md shadow-primary/15" : "bg-muted rounded-bl-sm border border-border/30"
+                  )}>
+                  {msg.attachment_url && msg.attachment_type === 'image' && (
+                    <img src={msg.attachment_url} alt="attachment" className="rounded-xl max-w-full max-h-48 object-cover mb-1 block" />
+                  )}
+                  {msg.attachment_url && msg.attachment_type === 'video' && (
+                    <video src={msg.attachment_url} controls className="rounded-xl max-w-full max-h-48 mb-1 block" />
+                  )}
+                  {msg.attachment_url && msg.attachment_type === 'audio' && (
+                    <audio src={msg.attachment_url} controls className="w-full mb-1" />
+                  )}
+                  {msg.attachment_url && (msg.attachment_type === 'pdf' || msg.attachment_type === 'document') && (
+                    <a href={msg.attachment_url} target="_blank" rel="noopener noreferrer"
+                      className={cn("flex items-center gap-1.5 text-xs underline mb-1", isMine ? "text-white/80" : "text-primary")}>
+                      📎 {msg.attachment_name || 'File'}
+                    </a>
+                  )}
+                  {msg.content && msg.content !== msg.attachment_name && msg.content}
+                </div>
               <span className={`text-[10px] mt-0.5 px-1 text-muted-foreground/60 ${isMine ? 'text-right' : ''}`}>
                 {timeLabel}
               </span>
