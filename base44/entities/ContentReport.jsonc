@@ -15,7 +15,8 @@
         "comment",
         "community",
         "school",
-        "market_item"
+        "market_item",
+        "reel"
       ]
     },
     "target_id": {

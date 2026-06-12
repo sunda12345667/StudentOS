@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import StatCard from '@/components/admin/StatCard';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import {
-  DollarSign, Percent, ShoppingCart, Megaphone, Building2,
+  DollarSign, ShoppingCart, Megaphone, Building2,
   TrendingUp, Users, Activity,
-  Wallet, School, ShoppingBag, FileText, Globe
+  Wallet, School, ShoppingBag, FileText, Globe, Film,
+  BookOpen, MessageSquare, Flag, Video, Bot
 } from 'lucide-react';
 import UserAnalyticsPanel from '@/components/admin/UserAnalyticsPanel';
 
@@ -24,43 +25,74 @@ export default function AdminOverview() {
   const [schools, setSchools] = useState([]);
   const [posts, setPosts] = useState([]);
   const [communities, setCommunities] = useState([]);
+  const [reels, setReels] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [comments, setComments] = useState([]);
+  const [marketItems, setMarketItems] = useState([]);
+  const [postReports, setPostReports] = useState([]);
+  const [contentReports, setContentReports] = useState([]);
+  const [tutorConvos, setTutorConvos] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
+  const [campusGroups, setCampusGroups] = useState([]);
 
   const load = () => {
     setLoading(true);
     Promise.all([
-      base44.entities.Order.list('-created_date', 100),
-      base44.entities.AdCampaign.list('-created_date', 50),
-      base44.entities.Advertiser.list('-created_date', 50),
-      base44.entities.Transaction.list('-created_date', 200),
-      base44.entities.Wallet.list('-created_date', 200),
-      base44.entities.User.list('-created_date', 200),
-      base44.entities.School.list('-created_date', 50),
+      base44.entities.Order.list('-created_date', 200),
+      base44.entities.AdCampaign.list('-created_date', 100),
+      base44.entities.Advertiser.list('-created_date', 100),
+      base44.entities.Transaction.list('-created_date', 500),
+      base44.entities.Wallet.list('-created_date', 500),
+      base44.entities.User.list('-created_date', 500),
+      base44.entities.School.list('-created_date', 100),
       base44.entities.Post.list('-created_date', 500),
-      base44.entities.Community.list('-created_date', 100),
-    ]).then(([o, a, adv, tx, w, u, s, p, c]) => {
-      setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w); setUsers(u); setSchools(s); setPosts(p); setCommunities(c);
+      base44.entities.Community.list('-created_date', 200),
+      base44.entities.Reel.list('-created_date', 200),
+      base44.entities.Course.list('-created_date', 200),
+      base44.entities.Comment.list('-created_date', 500),
+      base44.entities.MarketItem.list('-created_date', 200),
+      base44.entities.PostReport.list('-created_date', 200),
+      base44.entities.ContentReport.list('-created_date', 200).catch(() => []),
+      base44.entities.TutorConversation.list('-created_date', 200).catch(() => []),
+      base44.entities.WithdrawalRequest.list('-created_date', 200).catch(() => []),
+      base44.entities.CampusGroup.list('-created_date', 100).catch(() => []),
+    ]).then(([o, a, adv, tx, w, u, s, p, c, r, crs, cmt, mi, pr, cr, tc, wd, cg]) => {
+      setOrders(o); setAds(a); setAdvertisers(adv); setTransactions(tx); setWallets(w);
+      setUsers(u); setSchools(s); setPosts(p); setCommunities(c); setReels(r);
+      setCourses(crs); setComments(cmt); setMarketItems(mi); setPostReports(pr);
+      setContentReports(cr); setTutorConvos(tc); setWithdrawals(wd); setCampusGroups(cg);
       setLoading(false);
     }).catch(() => setLoading(false));
   };
 
   useEffect(() => {
     load();
-    // Real-time: re-fetch when new transactions or wallets are created/updated
     const unsubTx = base44.entities.Transaction.subscribe(() => load());
     const unsubW = base44.entities.Wallet.subscribe(() => load());
-    return () => { unsubTx(); unsubW(); };
+    const unsubP = base44.entities.Post.subscribe(() => load());
+    return () => { unsubTx(); unsubW(); unsubP(); };
   }, []);
 
-  const totalSales = orders.reduce((s, o) => s + (o.price || 0), 0);
+  // Financial metrics — all from real DB records
+  const totalSales = orders.filter(o => o.status === 'completed').reduce((s, o) => s + (o.price || 0), 0);
   const totalCommission = transactions.filter(t => t.type === 'escrow_release').reduce((s, t) => s + (t.amount || 0), 0);
   const activeAds = ads.filter(a => a.status === 'active').length;
   const adRevenue = ads.reduce((s, a) => s + (a.spent || 0), 0);
   const totalWalletBalance = wallets.reduce((s, w) => s + (w.balance || 0), 0);
   const totalFunded = wallets.reduce((s, w) => s + (w.total_funded || 0), 0);
   const totalSpent = wallets.reduce((s, w) => s + (w.total_spent || 0), 0);
-  const totalEarned = wallets.reduce((s, w) => s + (w.total_earned || 0), 0);
+  const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending').length;
+  const withdrawalAmount = withdrawals.filter(w => w.status === 'approved').reduce((s, w) => s + (w.amount || 0), 0);
 
-  // Build last-7-days chart data
+  // Content metrics
+  const verifiedSchools = schools.filter(s => s.verified).length;
+  const activeMarketItems = marketItems.filter(m => m.status === 'available').length;
+  const completedOrders = orders.filter(o => o.status === 'completed').length;
+  const totalReports = postReports.length + contentReports.length;
+  const pendingReports = postReports.filter(r => r.status === 'pending').length + contentReports.filter(r => r.status === 'pending').length;
+  const flaggedReels = reels.filter(r => r.moderation_status === 'flagged' || r.moderation_status === 'suspended').length;
+
+  // Chart data — real records
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -88,19 +120,36 @@ export default function AdminOverview() {
 
   return (
     <div className="space-y-6">
-      {/* Stats grid */}
+      {/* Row 1: Users & Revenue */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Users" value={users.length} sub={`Active today: ${activeUsersToday}`} icon={Users} iconColor="blue" />
         <StatCard label="Total Revenue" value={`₦${((totalCommission + adRevenue) || 0).toLocaleString()}`} sub="Commission + Ads" icon={DollarSign} iconColor="purple" />
-        <StatCard label="Marketplace Sales" value={`₦${(totalSales || 0).toLocaleString()}`} sub={`${orders.length} total orders`} icon={ShoppingCart} iconColor="green" />
+        <StatCard label="Marketplace Sales" value={`₦${(totalSales || 0).toLocaleString()}`} sub={`${completedOrders} completed orders`} icon={ShoppingCart} iconColor="green" />
         <StatCard label="Active Ad Campaigns" value={activeAds} sub={`${advertisers.length} advertisers`} icon={Megaphone} iconColor="amber" />
       </div>
 
+      {/* Row 2: Wallet & Withdrawals */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Ad Revenue" value={`₦${(adRevenue || 0).toLocaleString()}`} sub="From campaigns" icon={Building2} iconColor="pink" />
         <StatCard label="Total Wallet Balance" value={`₦${(totalWalletBalance || 0).toLocaleString()}`} sub={`${wallets.length} wallets`} icon={Wallet} iconColor="cyan" />
         <StatCard label="Total Funded" value={`₦${(totalFunded || 0).toLocaleString()}`} sub="All user wallets" icon={TrendingUp} iconColor="blue" />
-        <StatCard label="Total Spent" value={`₦${(totalSpent || 0).toLocaleString()}`} sub="Marketplace spending" icon={ShoppingCart} iconColor="rose" />
+        <StatCard label="Withdrawals Paid" value={`₦${(withdrawalAmount || 0).toLocaleString()}`} sub={`${pendingWithdrawals} pending`} icon={ShoppingCart} iconColor="rose" />
+      </div>
+
+      {/* Row 3: Content metrics — all from DB */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Total Posts" value={posts.length} sub={`${postsToday} today`} icon={FileText} iconColor="pink" />
+        <StatCard label="Communities" value={communities.length} sub={`${campusGroups.length} campus groups`} icon={Globe} iconColor="cyan" />
+        <StatCard label="Courses" value={courses.length} sub="All time" icon={BookOpen} iconColor="green" />
+        <StatCard label="Total Reels" value={reels.length} sub={`${flaggedReels} flagged`} icon={Film} iconColor="purple" />
+      </div>
+
+      {/* Row 4: Moderation & Platform */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Verified Schools" value={verifiedSchools} sub={`${schools.length} total`} icon={School} iconColor="amber" />
+        <StatCard label="Market Listings" value={activeMarketItems} sub={`${marketItems.length} total`} icon={ShoppingBag} iconColor="blue" />
+        <StatCard label="Total Reports" value={totalReports} sub={`${pendingReports} pending review`} icon={Flag} iconColor="rose" />
+        <StatCard label="AI Tutor Sessions" value={tutorConvos.length} sub="All conversations" icon={Bot} iconColor="purple" />
       </div>
 
       {/* Revenue chart - placeholder for real data */}
@@ -191,52 +240,33 @@ export default function AdminOverview() {
           </div>
         </div>
 
-        {/* Platform Stats */}
+        {/* Platform Stats — all real DB data */}
         <div className="rounded-2xl border border-border bg-card p-6">
           <h3 className="text-foreground font-bold text-sm mb-4">Platform Statistics</h3>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-blue-600" />
-                <span className="text-sm text-muted-foreground">Total Users</span>
+          <div className="space-y-2">
+            {[
+              { label: 'Total Users', value: users.length, icon: Users, color: 'text-blue-600' },
+              { label: 'Verified Schools', value: verifiedSchools, icon: School, color: 'text-purple-600' },
+              { label: 'Communities', value: communities.length, icon: Globe, color: 'text-cyan-600' },
+              { label: 'Campus Groups', value: campusGroups.length, icon: Globe, color: 'text-teal-600' },
+              { label: 'Total Courses', value: courses.length, icon: BookOpen, color: 'text-emerald-600' },
+              { label: 'Market Listings', value: marketItems.length, icon: ShoppingBag, color: 'text-green-600' },
+              { label: 'Completed Orders', value: completedOrders, icon: ShoppingCart, color: 'text-green-700' },
+              { label: 'Total Posts', value: posts.length, icon: FileText, color: 'text-pink-600' },
+              { label: 'Comments', value: comments.length, icon: MessageSquare, color: 'text-indigo-600' },
+              { label: 'Total Reels', value: reels.length, icon: Film, color: 'text-violet-600' },
+              { label: 'AI Tutor Sessions', value: tutorConvos.length, icon: Bot, color: 'text-amber-600' },
+              { label: 'Ad Campaigns', value: ads.length, icon: Megaphone, color: 'text-orange-600' },
+              { label: 'Pending Reports', value: pendingReports, icon: Flag, color: 'text-red-600' },
+            ].map(({ label, value, icon: Icon, color }) => (
+              <div key={label} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2">
+                  <Icon className={`w-4 h-4 ${color}`} />
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                </div>
+                <span className="text-base font-bold">{value}</span>
               </div>
-              <span className="text-lg font-bold">{users.length}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <School className="w-4 h-4 text-purple-600" />
-                <span className="text-sm text-muted-foreground">Schools</span>
-              </div>
-              <span className="text-lg font-bold">{schools.length}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-muted-foreground">Active Orders</span>
-              </div>
-              <span className="text-lg font-bold">{orders.filter(o => o.status !== 'cancelled').length}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-pink-600" />
-                <span className="text-sm text-muted-foreground">Total Posts</span>
-              </div>
-              <span className="text-lg font-bold">{posts.length}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-cyan-600" />
-                <span className="text-sm text-muted-foreground">Communities</span>
-              </div>
-              <span className="text-lg font-bold">{communities.length}</span>
-            </div>
-            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2">
-                <Megaphone className="w-4 h-4 text-amber-600" />
-                <span className="text-sm text-muted-foreground">Ad Campaigns</span>
-              </div>
-              <span className="text-lg font-bold">{ads.length}</span>
-            </div>
+            ))}
           </div>
         </div>
       </div>

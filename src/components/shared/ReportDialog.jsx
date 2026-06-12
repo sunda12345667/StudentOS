@@ -20,7 +20,7 @@ const REASONS = [
 
 const TYPE_LABELS = {
   post: 'Post', comment: 'Comment', community: 'Community',
-  school: 'School', market_item: 'Marketplace Listing',
+  school: 'School', market_item: 'Marketplace Listing', reel: 'Reel',
 };
 
 /**
@@ -32,7 +32,7 @@ const TYPE_LABELS = {
  *   targetOwnerEmail – email of the owner (optional)
  *   currentUser – { email, full_name }
  */
-export default function ReportDialog({ open, onOpenChange, targetType, targetId, targetTitle, targetOwnerEmail, currentUser }) {
+export default function ReportDialog({ open, onOpenChange, targetType, targetId, targetTitle, targetOwnerEmail, currentUser, onSuccess }) {
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -56,6 +56,7 @@ export default function ReportDialog({ open, onOpenChange, targetType, targetId,
     setDetails('');
     onOpenChange(false);
     setSubmitting(false);
+    if (onSuccess) onSuccess();
   };
 
   return (

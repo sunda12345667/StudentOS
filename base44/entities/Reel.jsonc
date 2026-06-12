@@ -46,6 +46,10 @@
       "type": "number",
       "default": 0
     },
+    "share_count": {
+      "type": "number",
+      "default": 0
+    },
     "view_count": {
       "type": "number",
       "default": 0
@@ -61,6 +65,31 @@
     },
     "duration": {
       "type": "string"
+    },
+    "moderation_status": {
+      "type": "string",
+      "enum": [
+        "approved",
+        "pending",
+        "flagged",
+        "suspended",
+        "removed"
+      ],
+      "default": "approved"
+    },
+    "moderation_note": {
+      "type": "string"
+    },
+    "moderated_by": {
+      "type": "string"
+    },
+    "report_count": {
+      "type": "number",
+      "default": 0
+    },
+    "is_hidden": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [

@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Percent, Megaphone, Building2, Wallet,
-  BarChart3, Bell, Settings, ChevronLeft, ChevronRight, Zap, X, Flag, Users, ShoppingBag
+  BarChart3, Bell, Settings, ChevronLeft, ChevronRight, Zap, X, Flag, Users, ShoppingBag, Film
 } from 'lucide-react';
 
 const NAV = [
@@ -16,6 +16,7 @@ const NAV = [
   { label: 'Analytics',      path: '/admin/analytics',    icon: BarChart3 },
   { label: 'Marketplace',    path: '/admin/marketplace',  icon: ShoppingBag },
   { label: 'Reports',        path: '/admin/reports',      icon: Flag },
+  { label: 'Reels Moderation', path: '/admin/reels',      icon: Film },
   { label: 'Notifications',  path: '/admin/notifications', icon: Bell },
   { label: 'Settings',       path: '/admin/settings',     icon: Settings },
 ];
@@ -63,7 +64,8 @@ export default function AdminSidebar({ collapsed, onToggle, mobileOpen, onMobile
 
         {/* Nav */}
         <nav className="flex-1 py-4 px-2 space-y-0.5 overflow-y-auto">
-          {NAV.map(({ label, path, icon: Icon }) => {
+          {NAV.map(({ label, path, icon: NavIcon }) => {
+            const Icon = NavIcon;
             const active = pathname === path || (path !== '/admin' && pathname.startsWith(path));
             return (
               <Link

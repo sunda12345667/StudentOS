@@ -45,6 +45,7 @@ import AdminSettings from '@/pages/admin/AdminSettings';
 import AdminReports from '@/pages/admin/AdminReports';
 import AdminUsers from '@/pages/admin/AdminUsers';
 import AdminMarketplace from '@/pages/admin/AdminMarketplace';
+import AdminReelsModeration from '@/pages/admin/AdminReelsModeration';
 import SchoolDetail from '@/pages/SchoolDetail';
 import AdvertiserPortal from '@/pages/advertiser/AdvertiserPortal';
 
@@ -112,6 +113,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin/analytics" element={<AdminAnalytics />} />
           <Route path="/admin/reports" element={<AdminReports />} />
           <Route path="/admin/marketplace" element={<AdminMarketplace />} />
+          <Route path="/admin/reels" element={<AdminReelsModeration />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route path="/admin/settings" element={<AdminSettings />} />

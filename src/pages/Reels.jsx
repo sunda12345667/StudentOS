@@ -10,11 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Heart, MessageCircle, Share2, Plus, Upload, Play, Volume2, VolumeX, Loader2, BookOpen } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Plus, Upload, Play, Volume2, VolumeX, Loader2, BookOpen, Flag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
+import { toast } from 'sonner';
 import ReelComments from '@/components/reels/ReelComments';
 import ReelShare from '@/components/reels/ReelShare';
+import ReportDialog from '@/components/shared/ReportDialog';
 
 export default function Reels() {
   const { user } = useOutletContext();
@@ -33,6 +35,31 @@ export default function Reels() {
   const handleUpload = async () => {
     if (!videoFile) return;
     setUploading(true);
+
+    // AI educational content check
+    const check = await base44.integrations.Core.InvokeLLM({
+      prompt: `You are a content moderator for an educational student platform. Evaluate this reel submission:
+Title: "${form.title}"
+Description: "${form.description}"
+Subject: "${form.subject}"
+
+Is this appropriate educational content? Reject if it contains: gambling, adult content, political propaganda, hate speech, violence, spam, fraud, misleading info, celebrity gossip, or entertainment unrelated to learning.
+Respond with JSON only.`,
+      response_json_schema: {
+        type: 'object',
+        properties: {
+          approved: { type: 'boolean' },
+          reason: { type: 'string' }
+        }
+      }
+    });
+
+    if (!check?.approved) {
+      toast.error(`Content rejected: ${check?.reason || 'Does not meet educational standards.'}`);
+      setUploading(false);
+      return;
+    }
+
     let video_url = '', thumbnail_url = '';
     const [vRes] = await Promise.all([
       base44.integrations.Core.UploadFile({ file: videoFile }),
@@ -45,6 +72,7 @@ export default function Reels() {
       author_avatar: user.avatar_url || '',
       author_role: 'student', likes: [], like_count: 0, comment_count: 0, share_count: 0, view_count: 0,
       tags: form.subject ? [form.subject] : [],
+      moderation_status: 'approved',
     });
     const updated = await base44.entities.Reel.list('-created_date', 30);
     setReels(updated);
@@ -91,7 +119,7 @@ export default function Reels() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-          {reels.map((reel, i) => (
+          {reels.filter(r => !r.is_hidden).map((reel, i) => (
             <ReelCard
               key={reel.id}
               reel={reel}
@@ -152,7 +180,9 @@ function ReelCard({ reel, user, onLike, index, onUpdate }) {
   const [muted, setMuted] = useState(true);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const liked = reel.likes?.includes(user?.email);
+  const isOwn = reel.author_email === user?.email;
   const initials = reel.author_name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
 
   // Lift bottom sheet above virtual keyboard
@@ -174,8 +204,17 @@ function ReelCard({ reel, user, onLike, index, onUpdate }) {
     else { videoRef.current.play(); setPlaying(true); }
   };
 
+  const handleReport = async (data) => {
+    await base44.entities.Reel.update(reel.id, { report_count: (reel.report_count || 0) + 1 });
+    onUpdate({ report_count: (reel.report_count || 0) + 1 });
+  };
+
   return (
     <>
+      <ReportDialog open={showReport} onOpenChange={setShowReport}
+        targetType="reel" targetId={reel.id} targetTitle={reel.title}
+        targetOwnerEmail={reel.author_email} currentUser={user}
+        onSuccess={handleReport} />
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.06 }}>
         <Card className="overflow-hidden hover:shadow-xl transition-all group">
           <div className="relative aspect-[9/16] bg-black cursor-pointer" onClick={togglePlay}>
@@ -257,6 +296,12 @@ function ReelCard({ reel, user, onLike, index, onUpdate }) {
               <div className="flex flex-wrap gap-1 mt-1">
                 {reel.tags.map(t => <Badge key={t} variant="secondary" className="text-[10px]">#{t}</Badge>)}
               </div>
+            )}
+            {!isOwn && (
+              <button onClick={() => setShowReport(true)}
+                className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors">
+                <Flag className="w-2.5 h-2.5" />Report
+              </button>
             )}
           </div>
         </Card>
