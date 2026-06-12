@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Search, Lock, Globe, Loader2, TrendingUp, Sparkles, UserCheck } from 'lucide-react';
+import { Users, Plus, Search, Lock, Globe, Loader2, TrendingUp, Sparkles, UserCheck, Trash2 } from 'lucide-react';
+import DeleteConfirmDialog from '@/components/shared/DeleteConfirmDialog';
 import { motion } from 'framer-motion';
 
 const CAT_ICONS = { subject: '📚', club: '🎭', sports: '⚽', arts: '🎨', science: '🔬', technology: '💻', language: '🌍', general: '💬' };
@@ -24,6 +25,8 @@ export default function Communities() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', category: 'general', is_private: false });
   const [filter, setFilter] = useState('all');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     base44.entities.Community.list('-created_date', 50).then(setCommunities).finally(() => setLoading(false));
@@ -50,6 +53,21 @@ export default function Communities() {
     setCommunities(prev => prev.map(c => c.id === community.id ? { ...c, member_emails: members, member_count: members.length } : c));
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const restoreBy = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await base44.entities.DeletedItem.create({
+      item_type: 'community', item_id: deleteTarget.id,
+      item_data: deleteTarget, deleted_by_email: user.email,
+      deleted_by_name: user.full_name, restore_by: restoreBy,
+    });
+    await base44.entities.Community.delete(deleteTarget.id);
+    setCommunities(prev => prev.filter(c => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
+  };
+
   const filtered = communities.filter(c =>
     c.name?.toLowerCase().includes(search.toLowerCase()) &&
     (filter === 'all' || c.category === filter || (filter === 'mine' && c.member_emails?.includes(user?.email)))
@@ -59,6 +77,8 @@ export default function Communities() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
+      <DeleteConfirmDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}
+        title={deleteTarget?.name} itemType="community" onConfirm={handleDelete} loading={deleting} />
       {/* Discovery Hero */}
       <div className="relative rounded-3xl overflow-hidden mb-8 bg-gradient-to-br from-primary via-accent to-purple-700 p-6 sm:p-8 text-white">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
@@ -151,22 +171,30 @@ export default function Communities() {
                     <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{c.description}</p>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Users className="w-3.5 h-3.5" />{c.member_count || 0} members
+                        <Users className="w-3.5 h-3.5" />{c.member_emails?.length || c.member_count || 0} members
                       </div>
-                      {isMember ? (
-                        <div className="flex items-center gap-1.5">
-                          <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
-                            <UserCheck className="w-3.5 h-3.5" />Joined
-                          </span>
-                          <Link to={`/communities/${c.id}`}>
-                            <Button size="sm" variant="secondary" className="h-7 text-xs">View</Button>
-                          </Link>
-                        </div>
-                      ) : (
-                        <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(c)}>
-                          <Plus className="w-3 h-3 mr-1" />Join
-                        </Button>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {isMember ? (
+                          <>
+                            <span className="flex items-center gap-1 text-xs text-emerald-600 font-semibold">
+                              <UserCheck className="w-3.5 h-3.5" />Joined
+                            </span>
+                            <Link to={`/communities/${c.id}`}>
+                              <Button size="sm" variant="secondary" className="h-7 text-xs">View</Button>
+                            </Link>
+                          </>
+                        ) : (
+                          <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(c)}>
+                            <Plus className="w-3 h-3 mr-1" />Join
+                          </Button>
+                        )}
+                        {c.admin_email === user?.email && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(c); }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Card>

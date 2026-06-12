@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CAT_CONFIG, COND_COLORS } from './ItemCard';
-import { MessageCircle, Eye, Share2, CheckCircle2, Loader2, ShieldCheck, Star, ShoppingCart, Truck, Download } from 'lucide-react';
+import { MessageCircle, Eye, Share2, CheckCircle2, Loader2, ShieldCheck, Star, ShoppingCart, Truck, Download, Flag } from 'lucide-react';
+import ReportDialog from '@/components/shared/ReportDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import ItemReviews from './ItemReviews';
@@ -18,6 +19,7 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
   const [message, setMessage] = useState('');
   const [msgSent, setMsgSent] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (!item) return null;
   const cfg = CAT_CONFIG[item.category] || CAT_CONFIG.textbook;
@@ -52,6 +54,10 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
 
   return (
     <>
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen}
+        targetType="market_item" targetId={item.id} targetTitle={item.title}
+        targetOwnerEmail={item.seller_email} currentUser={currentUser} />
+
       <Dialog open={open} onOpenChange={onClose}>
         <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] sm:w-full max-h-[92vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
@@ -182,6 +188,12 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
               <div className="p-3 rounded-xl bg-primary/5 border border-primary/20 text-sm text-center text-primary font-medium">
                 This is your listing
               </div>
+            )}
+            {!isOwn && (
+              <button onClick={() => setReportOpen(true)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors mx-auto">
+                <Flag className="w-3 h-3" />Report this listing
+              </button>
             )}
           </div>
         </DialogContent>

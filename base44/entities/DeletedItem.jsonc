@@ -1,0 +1,46 @@
+{
+  "name": "DeletedItem",
+  "type": "object",
+  "properties": {
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "course",
+        "community",
+        "campus_group",
+        "assignment",
+        "market_item",
+        "post"
+      ]
+    },
+    "item_id": {
+      "type": "string"
+    },
+    "item_data": {
+      "type": "object"
+    },
+    "deleted_by_email": {
+      "type": "string"
+    },
+    "deleted_by_name": {
+      "type": "string"
+    },
+    "restore_by": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "restored": {
+      "type": "boolean",
+      "default": false
+    },
+    "permanently_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "item_type",
+    "item_id",
+    "deleted_by_email"
+  ]
+}

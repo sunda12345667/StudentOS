@@ -1,0 +1,67 @@
+{
+  "name": "ContentReport",
+  "type": "object",
+  "properties": {
+    "reporter_email": {
+      "type": "string"
+    },
+    "reporter_name": {
+      "type": "string"
+    },
+    "target_type": {
+      "type": "string",
+      "enum": [
+        "post",
+        "comment",
+        "community",
+        "school",
+        "market_item"
+      ]
+    },
+    "target_id": {
+      "type": "string"
+    },
+    "target_title": {
+      "type": "string"
+    },
+    "target_owner_email": {
+      "type": "string"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "spam",
+        "harassment",
+        "hate_speech",
+        "misinformation",
+        "inappropriate_content",
+        "violence",
+        "off_topic",
+        "fraud",
+        "other"
+      ]
+    },
+    "details": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "reviewed",
+        "removed",
+        "dismissed"
+      ],
+      "default": "pending"
+    },
+    "admin_notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "reporter_email",
+    "target_type",
+    "target_id",
+    "reason"
+  ]
+}

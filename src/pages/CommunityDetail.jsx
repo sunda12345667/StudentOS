@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Loader2 } from 'lucide-react';
+import { Users, Loader2, Flag } from 'lucide-react';
+import ReportDialog from '@/components/shared/ReportDialog';
 import CreatePostBox from '@/components/shared/CreatePostBox';
 import PostCard from '@/components/shared/PostCard';
 
@@ -17,6 +18,7 @@ export default function CommunityDetail() {
   const [community, setCommunity] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
@@ -39,13 +41,27 @@ export default function CommunityDetail() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Banner */}
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen}
+        targetType="community" targetId={id} targetTitle={community.name}
+        targetOwnerEmail={community.admin_email} currentUser={user} />
+
       <Card className={`bg-gradient-to-br ${colorClass} text-white p-6 mb-6`}>
-        <Badge className="bg-white/20 text-white border-0 mb-2">{community.category}</Badge>
-        <h1 className="text-3xl font-black mb-1">{community.name}</h1>
-        <p className="text-white/80 text-sm mb-3">{community.description}</p>
-        <div className="flex items-center gap-1 text-sm">
-          <Users className="w-4 h-4" />
-          <span>{community.member_count || 0} members</span>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Badge className="bg-white/20 text-white border-0 mb-2">{community.category}</Badge>
+            <h1 className="text-3xl font-black mb-1">{community.name}</h1>
+            <p className="text-white/80 text-sm mb-3">{community.description}</p>
+            <div className="flex items-center gap-1 text-sm">
+              <Users className="w-4 h-4" />
+              <span>{community.member_emails?.length || community.member_count || 0} members</span>
+            </div>
+          </div>
+          {user?.email !== community.admin_email && (
+            <button onClick={() => setReportOpen(true)}
+              className="flex items-center gap-1 text-white/60 hover:text-white text-xs mt-1 transition-colors">
+              <Flag className="w-3.5 h-3.5" />Report
+            </button>
+          )}
         </div>
       </Card>
 
@@ -62,7 +78,7 @@ export default function CommunityDetail() {
         </div>
         <div className="space-y-4">
           <Card className="p-4">
-            <h3 className="font-semibold mb-3">Members ({community.member_count || 0})</h3>
+            <h3 className="font-semibold mb-3">Members ({community.member_emails?.length || community.member_count || 0})</h3>
             <div className="flex flex-wrap gap-1">
               {(community.member_emails || []).slice(0, 12).map(email => (
                 <Avatar key={email} className="h-8 w-8">

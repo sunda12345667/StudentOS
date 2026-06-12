@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Users, Globe, MapPin, CheckCircle, School, Loader2, UserCircle2, Mail } from 'lucide-react';
+import { ArrowLeft, Users, Globe, MapPin, CheckCircle, School, Loader2, UserCircle2, Mail, Flag } from 'lucide-react';
+import ReportDialog from '@/components/shared/ReportDialog';
 import { motion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -26,6 +27,7 @@ export default function SchoolDetail() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [joining, setJoining] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     if (!id) { setError('School not found.'); setLoading(false); return; }
@@ -93,6 +95,10 @@ export default function SchoolDetail() {
         <ArrowLeft className="w-4 h-4" />Schools
       </Button>
 
+      <ReportDialog open={reportOpen} onOpenChange={setReportOpen}
+        targetType="school" targetId={id} targetTitle={school.name}
+        targetOwnerEmail={school.admin_email} currentUser={user} />
+
       {/* Cover */}
       <div className="rounded-2xl overflow-hidden mb-6">
         <div className="h-40 sm:h-56 relative">
@@ -126,6 +132,12 @@ export default function SchoolDetail() {
             )}
             {(isMember || isAdmin) && (
               <Badge className="bg-emerald-500 text-white text-xs">✓ Member</Badge>
+            )}
+            {!isAdmin && (
+              <button onClick={() => setReportOpen(true)}
+                className="flex items-center gap-1 bg-black/30 text-white/70 hover:text-white text-xs px-2 py-1 rounded-lg transition-colors">
+                <Flag className="w-3 h-3" />Report
+              </button>
             )}
           </div>
         </div>

@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ClipboardList, Plus, Users, Calendar, CheckCircle, Clock, AlertCircle, Loader2, Upload } from 'lucide-react';
+import { ClipboardList, Plus, Users, Calendar, CheckCircle, Clock, AlertCircle, Loader2, Upload, Trash2 } from 'lucide-react';
+import DeleteConfirmDialog from '@/components/shared/DeleteConfirmDialog';
 import { formatDistanceToNow, isPast } from 'date-fns';
 import CreatePostBox from '@/components/shared/CreatePostBox';
 import PostCard from '@/components/shared/PostCard';
@@ -37,6 +38,8 @@ export default function CourseDetail() {
   const [submitting, setSubmitting] = useState(null);
   const [subText, setSubText] = useState('');
   const [grading, setGrading] = useState(null);
+  const [deleteAssignmentTarget, setDeleteAssignmentTarget] = useState(null);
+  const [deletingAssignment, setDeletingAssignment] = useState(false);
 
   useEffect(() => { load(); }, [id]);
 
@@ -79,6 +82,21 @@ export default function CourseDetail() {
     await load();
   };
 
+  const handleDeleteAssignment = async () => {
+    if (!deleteAssignmentTarget) return;
+    setDeletingAssignment(true);
+    const restoreBy = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await base44.entities.DeletedItem.create({
+      item_type: 'assignment', item_id: deleteAssignmentTarget.id,
+      item_data: deleteAssignmentTarget, deleted_by_email: user.email,
+      deleted_by_name: user.full_name, restore_by: restoreBy,
+    });
+    await base44.entities.Assignment.delete(deleteAssignmentTarget.id);
+    setAssignments(prev => prev.filter(a => a.id !== deleteAssignmentTarget.id));
+    setDeleteAssignmentTarget(null);
+    setDeletingAssignment(false);
+  };
+
   const gradeSubmission = async (sub, grade, feedback) => {
     await base44.entities.Submission.update(sub.id, { grade: Number(grade), feedback, status: 'graded' });
     setGrading(null);
@@ -93,6 +111,8 @@ export default function CourseDetail() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
+      <DeleteConfirmDialog open={!!deleteAssignmentTarget} onOpenChange={v => !v && setDeleteAssignmentTarget(null)}
+        title={deleteAssignmentTarget?.title} itemType="assignment" onConfirm={handleDeleteAssignment} loading={deletingAssignment} />
       {/* Header Banner */}
       <Card className={`bg-gradient-to-br ${colorClass} text-white p-6 mb-6 overflow-hidden relative`}>
         <div className="absolute inset-0 opacity-10">
@@ -175,12 +195,20 @@ export default function CourseDetail() {
                         <span className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />{a.max_points} pts</span>
                       </div>
                     </div>
-                    {!isTeacher && !mySubmission && (
-                      <Button size="sm" className="gradient-brand border-0 gap-1 text-xs" onClick={() => setSubmitting(a.id)}>
-                        <Upload className="w-3.5 h-3.5" />Submit
-                      </Button>
-                    )}
-                    {mySubmission?.grade !== undefined && (
+                    <div className="flex items-center gap-2">
+                      {!isTeacher && !mySubmission && (
+                        <Button size="sm" className="gradient-brand border-0 gap-1 text-xs" onClick={() => setSubmitting(a.id)}>
+                          <Upload className="w-3.5 h-3.5" />Submit
+                        </Button>
+                      )}
+                      {isTeacher && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteAssignmentTarget(a)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                    {mySubmission?.grade !== undefined && !isTeacher && (
                       <div className="text-right">
                         <p className="text-2xl font-black text-primary">{mySubmission.grade}</p>
                         <p className="text-xs text-muted-foreground">/ {a.max_points}</p>

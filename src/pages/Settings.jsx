@@ -13,8 +13,9 @@ import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 import {
   User, Lock, Bell, Eye, Palette, Wallet, HelpCircle, LogOut,
-  ChevronRight, Moon, Sun, Monitor, Camera, Loader2, ArrowLeft, Shield
+  ChevronRight, Moon, Sun, Monitor, Camera, Loader2, ArrowLeft, Shield, Trash2
 } from 'lucide-react';
+import RecycleBin from '@/components/settings/RecycleBin';
 import { cn } from '@/lib/utils';
 
 const SECTIONS = [
@@ -23,6 +24,7 @@ const SECTIONS = [
   { id: 'notifications', icon: Bell,     label: 'Notifications', color: 'text-amber-500',  bg: 'bg-amber-500/10' },
   { id: 'security',      icon: Shield,   label: 'Security',      color: 'text-rose-500',   bg: 'bg-rose-500/10' },
   { id: 'appearance',    icon: Palette,  label: 'Appearance',    color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { id: 'recycle_bin',   icon: Trash2,   label: 'Recycle Bin',   color: 'text-orange-500', bg: 'bg-orange-500/10' },
 ];
 
 export default function Settings() {
@@ -291,6 +293,13 @@ export default function Settings() {
                     Log out from all devices
                   </Button>
                 </div>
+              </Card>
+            )}
+
+            {active === 'recycle_bin' && (
+              <Card className="p-5">
+                <h2 className="font-bold text-base mb-4">Recycle Bin</h2>
+                <RecycleBin userEmail={user?.email} />
               </Card>
             )}
 

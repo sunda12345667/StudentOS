@@ -3,19 +3,21 @@ import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Flag, Trash2, CheckCircle, XCircle, Eye, AlertTriangle } from 'lucide-react';
+import { Loader2, Flag, Trash2, CheckCircle, XCircle, Eye, AlertTriangle, Users, ShoppingBag, School } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 
 const REASON_LABELS = {
-  spam: 'Spam',
-  harassment: 'Harassment',
-  hate_speech: 'Hate Speech',
-  misinformation: 'Misinformation',
-  inappropriate_content: 'Inappropriate Content',
-  violence: 'Violence',
-  other: 'Other',
+  spam: 'Spam', harassment: 'Harassment', hate_speech: 'Hate Speech',
+  misinformation: 'Misinformation', inappropriate_content: 'Inappropriate Content',
+  violence: 'Violence', off_topic: 'Off-Topic', fraud: 'Fraud', other: 'Other',
+};
+
+const TARGET_TYPE_LABELS = {
+  post: 'Post', comment: 'Comment', community: 'Community',
+  school: 'School', market_item: 'Marketplace Listing',
 };
 
 const STATUS_CONFIG = {
@@ -27,14 +29,19 @@ const STATUS_CONFIG = {
 
 export default function AdminReports() {
   const [reports, setReports] = useState([]);
+  const [contentReports, setContentReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState('pending');
   const [acting, setActing] = useState(false);
 
   const load = async () => {
-    const all = await base44.entities.PostReport.list('-created_date', 100);
-    setReports(all);
+    const [postRpts, contentRpts] = await Promise.all([
+      base44.entities.PostReport.list('-created_date', 100),
+      base44.entities.ContentReport.list('-created_date', 100).catch(() => []),
+    ]);
+    setReports(postRpts);
+    setContentReports(contentRpts);
     setLoading(false);
   };
 
@@ -65,8 +72,17 @@ export default function AdminReports() {
     setActing(false);
   };
 
+  const updateContentStatus = async (report, status) => {
+    setActing(true);
+    await base44.entities.ContentReport.update(report.id, { status });
+    setContentReports(prev => prev.map(r => r.id === report.id ? { ...r, status } : r));
+    toast.success(`Report marked as ${status}`);
+    setActing(false);
+  };
+
   const filtered = filter === 'all' ? reports : reports.filter(r => r.status === filter);
-  const pendingCount = reports.filter(r => r.status === 'pending').length;
+  const filteredContent = filter === 'all' ? contentReports : contentReports.filter(r => r.status === filter);
+  const pendingCount = reports.filter(r => r.status === 'pending').length + contentReports.filter(r => r.status === 'pending').length;
 
   if (loading) return (
     <div className="flex justify-center py-20">
@@ -79,10 +95,10 @@ export default function AdminReports() {
       {/* Header stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Reports', value: reports.length, color: 'text-white' },
+          { label: 'Total Reports', value: reports.length + contentReports.length, color: 'text-white' },
           { label: 'Pending Review', value: pendingCount, color: 'text-amber-400' },
-          { label: 'Posts Removed', value: reports.filter(r => r.status === 'removed').length, color: 'text-red-400' },
-          { label: 'Dismissed', value: reports.filter(r => r.status === 'dismissed').length, color: 'text-gray-400' },
+          { label: 'Content Removed', value: reports.filter(r => r.status === 'removed').length + contentReports.filter(r => r.status === 'removed').length, color: 'text-red-400' },
+          { label: 'Dismissed', value: reports.filter(r => r.status === 'dismissed').length + contentReports.filter(r => r.status === 'dismissed').length, color: 'text-gray-400' },
         ].map(s => (
           <div key={s.label} className="rounded-2xl bg-white/5 border border-white/10 p-5">
             <p className="text-xs text-white/40 mb-1">{s.label}</p>
@@ -94,15 +110,10 @@ export default function AdminReports() {
       {/* Filter tabs */}
       <div className="flex gap-2 flex-wrap">
         {['pending', 'reviewed', 'removed', 'dismissed', 'all'].map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
+          <button key={f} onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-xl text-sm font-semibold transition-all ${
-              filter === f
-                ? 'bg-blue-600 text-white'
-                : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
-            }`}
-          >
+              filter === f ? 'bg-blue-600 text-white' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'
+            }`}>
             {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
             {f === 'pending' && pendingCount > 0 && (
               <span className="ml-1.5 bg-amber-500 text-white text-xs rounded-full px-1.5">{pendingCount}</span>
@@ -111,68 +122,124 @@ export default function AdminReports() {
         ))}
       </div>
 
-      {/* Reports list */}
-      <div className="space-y-3">
-        {filtered.length === 0 ? (
-          <div className="text-center py-16 text-white/30">
-            <Flag className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p className="text-sm">No {filter !== 'all' ? filter : ''} reports</p>
-          </div>
-        ) : (
-          filtered.map(report => {
-            const statusCfg = STATUS_CONFIG[report.status] || STATUS_CONFIG.pending;
-            return (
-              <div key={report.id} className="rounded-2xl bg-white/5 border border-white/10 p-4 hover:bg-white/8 transition-colors">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${statusCfg.color}`}>
-                        {statusCfg.label}
-                      </span>
-                      <span className="text-xs bg-white/10 text-white/60 px-2 py-0.5 rounded-lg">
-                        {REASON_LABELS[report.reason] || report.reason}
-                      </span>
-                      <span className="text-xs text-white/30">
-                        {report.created_date ? formatDistanceToNow(new Date(report.created_date), { addSuffix: true }) : ''}
-                      </span>
+      <Tabs defaultValue="posts">
+        <TabsList className="bg-white/5">
+          <TabsTrigger value="posts" className="data-[state=active]:bg-white/10 text-white/60 data-[state=active]:text-white gap-1.5">
+            <Flag className="w-3.5 h-3.5" />Post Reports ({filtered.length})
+          </TabsTrigger>
+          <TabsTrigger value="content" className="data-[state=active]:bg-white/10 text-white/60 data-[state=active]:text-white gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" />Other Reports ({filteredContent.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Post reports */}
+        <TabsContent value="posts" className="mt-4 space-y-3">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-white/30">
+              <Flag className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No {filter !== 'all' ? filter : ''} post reports</p>
+            </div>
+          ) : (
+            filtered.map(report => {
+              const statusCfg = STATUS_CONFIG[report.status] || STATUS_CONFIG.pending;
+              return (
+                <div key={report.id} className="rounded-2xl bg-white/5 border border-white/10 p-4 hover:bg-white/8 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${statusCfg.color}`}>{statusCfg.label}</span>
+                        <span className="text-xs bg-white/10 text-white/60 px-2 py-0.5 rounded-lg">{REASON_LABELS[report.reason] || report.reason}</span>
+                        <span className="text-xs text-white/30">{report.created_date ? formatDistanceToNow(new Date(report.created_date), { addSuffix: true }) : ''}</span>
+                      </div>
+                      <div className="rounded-xl bg-black/30 border border-white/5 p-3 mb-2">
+                        <p className="text-xs text-white/40 mb-1">Post by <span className="text-white/60 font-medium">{report.post_author_name || report.post_author_email}</span></p>
+                        <p className="text-sm text-white/70 line-clamp-2">{report.post_content || '(content unavailable)'}</p>
+                      </div>
+                      <p className="text-xs text-white/40">Reported by: <span className="text-white/60">{report.reporter_name || report.reporter_email}</span>
+                        {report.details && <span className="ml-2 text-white/30">· "{report.details}"</span>}
+                      </p>
                     </div>
-
-                    {/* Post content preview */}
-                    <div className="rounded-xl bg-black/30 border border-white/5 p-3 mb-2">
-                      <p className="text-xs text-white/40 mb-1">Reported post by <span className="text-white/60 font-medium">{report.post_author_name || report.post_author_email}</span></p>
-                      <p className="text-sm text-white/70 line-clamp-2">{report.post_content || '(content unavailable)'}</p>
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      <Button size="sm" variant="ghost" className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10 gap-1" onClick={() => setSelected(report)}>
+                        <Eye className="w-3.5 h-3.5" />Review
+                      </Button>
+                      {report.status === 'pending' && (
+                        <>
+                          <Button size="sm" variant="ghost" className="h-8 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-1" onClick={() => removePost(report)} disabled={acting}>
+                            <Trash2 className="w-3.5 h-3.5" />Remove
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 text-xs text-gray-400 hover:text-gray-300 hover:bg-white/5 gap-1" onClick={() => updateStatus(report, 'dismissed')} disabled={acting}>
+                            <XCircle className="w-3.5 h-3.5" />Dismiss
+                          </Button>
+                        </>
+                      )}
                     </div>
-
-                    <p className="text-xs text-white/40">
-                      Reported by: <span className="text-white/60">{report.reporter_name || report.reporter_email}</span>
-                      {report.details && <span className="ml-2 text-white/30">· "{report.details}"</span>}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5 flex-shrink-0">
-                    <Button size="sm" variant="ghost" className="h-8 text-xs text-white/60 hover:text-white hover:bg-white/10 gap-1"
-                      onClick={() => setSelected(report)}>
-                      <Eye className="w-3.5 h-3.5" />Review
-                    </Button>
-                    {report.status === 'pending' && (
-                      <>
-                        <Button size="sm" variant="ghost" className="h-8 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-1"
-                          onClick={() => removePost(report)} disabled={acting}>
-                          <Trash2 className="w-3.5 h-3.5" />Remove
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-8 text-xs text-gray-400 hover:text-gray-300 hover:bg-white/5 gap-1"
-                          onClick={() => updateStatus(report, 'dismissed')} disabled={acting}>
-                          <XCircle className="w-3.5 h-3.5" />Dismiss
-                        </Button>
-                      </>
-                    )}
                   </div>
                 </div>
-              </div>
-            );
-          })
-        )}
-      </div>
+              );
+            })
+          )}
+        </TabsContent>
+
+        {/* Community/School/Marketplace reports */}
+        <TabsContent value="content" className="mt-4 space-y-3">
+          {filteredContent.length === 0 ? (
+            <div className="text-center py-16 text-white/30">
+              <AlertTriangle className="w-10 h-10 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">No {filter !== 'all' ? filter : ''} content reports</p>
+            </div>
+          ) : (
+            filteredContent.map(report => {
+              const statusCfg = STATUS_CONFIG[report.status] || STATUS_CONFIG.pending;
+              const typeIcon = report.target_type === 'community' ? <Users className="w-3 h-3" />
+                : report.target_type === 'market_item' ? <ShoppingBag className="w-3 h-3" />
+                : report.target_type === 'school' ? <School className="w-3 h-3" />
+                : <Flag className="w-3 h-3" />;
+              return (
+                <div key={report.id} className="rounded-2xl bg-white/5 border border-white/10 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${statusCfg.color}`}>{statusCfg.label}</span>
+                        <span className="text-xs bg-white/10 text-white/60 px-2 py-0.5 rounded-lg flex items-center gap-1">{typeIcon}{TARGET_TYPE_LABELS[report.target_type] || report.target_type}</span>
+                        <span className="text-xs bg-white/10 text-white/60 px-2 py-0.5 rounded-lg">{REASON_LABELS[report.reason] || report.reason}</span>
+                        <span className="text-xs text-white/30">{report.created_date ? formatDistanceToNow(new Date(report.created_date), { addSuffix: true }) : ''}</span>
+                      </div>
+                      <div className="rounded-xl bg-black/30 border border-white/5 p-3 mb-2">
+                        <p className="text-xs text-white/40 mb-0.5">{TARGET_TYPE_LABELS[report.target_type]} · owner: <span className="text-white/60">{report.target_owner_email || 'unknown'}</span></p>
+                        <p className="text-sm text-white/70 font-medium">{report.target_title || '(title unavailable)'}</p>
+                      </div>
+                      <p className="text-xs text-white/40">Reported by: <span className="text-white/60">{report.reporter_name || report.reporter_email}</span>
+                        {report.details && <span className="ml-2 text-white/30">· "{report.details}"</span>}
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-1.5 flex-shrink-0">
+                      {report.status === 'pending' && (
+                        <>
+                          <Button size="sm" variant="ghost" className="h-8 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10 gap-1"
+                            onClick={() => updateContentStatus(report, 'removed')} disabled={acting}>
+                            <XCircle className="w-3.5 h-3.5" />Remove
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 text-xs text-gray-400 hover:text-gray-300 hover:bg-white/5 gap-1"
+                            onClick={() => updateContentStatus(report, 'dismissed')} disabled={acting}>
+                            <CheckCircle className="w-3.5 h-3.5" />Dismiss
+                          </Button>
+                        </>
+                      )}
+                      {report.status !== 'pending' && (
+                        <Button size="sm" variant="ghost" className="h-8 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 gap-1"
+                          onClick={() => updateContentStatus(report, 'reviewed')} disabled={acting}>
+                          <CheckCircle className="w-3.5 h-3.5" />Mark Reviewed
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Review detail dialog */}
       {selected && (

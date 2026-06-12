@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { BookOpen, Plus, Users, Clock, ChevronRight, GraduationCap, Loader2, Star } from 'lucide-react';
+import { BookOpen, Plus, Users, Clock, ChevronRight, GraduationCap, Loader2, Star, Trash2 } from 'lucide-react';
+import DeleteConfirmDialog from '@/components/shared/DeleteConfirmDialog';
 import { motion } from 'framer-motion';
 
 const COLORS = ['from-blue-500 to-indigo-600', 'from-purple-500 to-pink-600', 'from-green-500 to-emerald-600', 'from-orange-500 to-red-600', 'from-cyan-500 to-blue-600', 'from-amber-500 to-orange-600'];
@@ -22,6 +23,8 @@ export default function Classroom() {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ title: '', description: '', subject: '', grade_level: '', schedule: '', price: 0, is_free: true });
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { load(); }, [user?.email]);
 
@@ -46,6 +49,21 @@ export default function Classroom() {
     setOpen(false);
     setForm({ title: '', description: '', subject: '', grade_level: '', schedule: '', price: 0, is_free: true });
     setCreating(false);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const restoreBy = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await base44.entities.DeletedItem.create({
+      item_type: 'course', item_id: deleteTarget.id,
+      item_data: deleteTarget, deleted_by_email: user.email,
+      deleted_by_name: user.full_name, restore_by: restoreBy,
+    });
+    await base44.entities.Course.delete(deleteTarget.id);
+    setCourses(prev => prev.filter(c => c.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
   };
 
   const handleEnroll = async (course) => {
@@ -87,17 +105,25 @@ export default function Classroom() {
             </div>
             <div className="flex items-center justify-between">
               <span className="font-bold text-sm">{course.is_free ? 'Free' : `$${course.price}`}</span>
-              {enrolled ? (
-                <Link to={`/classroom/${course.id}`}>
-                  <Button size="sm" className="h-7 text-xs gradient-brand border-0 gap-1">
-                    Enter <ChevronRight className="w-3 h-3" />
+              <div className="flex items-center gap-1.5">
+                {enrolled ? (
+                  <Link to={`/classroom/${course.id}`}>
+                    <Button size="sm" className="h-7 text-xs gradient-brand border-0 gap-1">
+                      Enter <ChevronRight className="w-3 h-3" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleEnroll(course)}>
+                    Enroll
                   </Button>
-                </Link>
-              ) : (
-                <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleEnroll(course)}>
-                  Enroll
-                </Button>
-              )}
+                )}
+                {course.teacher_email === user?.email && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={e => { e.stopPropagation(); setDeleteTarget(course); }}>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </Card>
@@ -107,6 +133,8 @@ export default function Classroom() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
+      <DeleteConfirmDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}
+        title={deleteTarget?.title} itemType="course" onConfirm={handleDelete} loading={deleting} />
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-black">Classroom</h1>

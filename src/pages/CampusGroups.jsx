@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Search, Plus, Users, Lock, Globe, Loader2, GraduationCap } from 'lucide-react';
+import { Search, Plus, Users, Lock, Globe, Loader2, GraduationCap, Trash2 } from 'lucide-react';
+import DeleteConfirmDialog from '@/components/shared/DeleteConfirmDialog';
 import { motion } from 'framer-motion';
 
 const GROUP_TYPES = {
@@ -32,6 +33,8 @@ export default function CampusGroups() {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', type: 'class', is_private: false });
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     base44.entities.CampusGroup.list('-created_date', 100)
@@ -57,6 +60,21 @@ export default function CampusGroups() {
     setCreating(false);
   };
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const restoreBy = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    await base44.entities.DeletedItem.create({
+      item_type: 'campus_group', item_id: deleteTarget.id,
+      item_data: deleteTarget, deleted_by_email: user.email,
+      deleted_by_name: user.full_name, restore_by: restoreBy,
+    });
+    await base44.entities.CampusGroup.delete(deleteTarget.id);
+    setGroups(prev => prev.filter(g => g.id !== deleteTarget.id));
+    setDeleteTarget(null);
+    setDeleting(false);
+  };
+
   const handleJoin = async (group) => {
     if (group.member_emails?.includes(user.email)) return;
     const members = [...(group.member_emails || []), user.email];
@@ -73,6 +91,8 @@ export default function CampusGroups() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
+      <DeleteConfirmDialog open={!!deleteTarget} onOpenChange={v => !v && setDeleteTarget(null)}
+        title={deleteTarget?.name} itemType="campus_group" onConfirm={handleDelete} loading={deleting} />
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
         <div>
@@ -165,15 +185,23 @@ export default function CampusGroups() {
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{group.description}</p>
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Users className="w-3.5 h-3.5" />{group.member_count || 0}
+                        <Users className="w-3.5 h-3.5" />{group.member_emails?.length || group.member_count || 0}
                       </div>
-                      {isMember || isAdmin ? (
-                        <Link to={`/campus/${group.id}`}>
-                          <Button size="sm" variant="secondary" className="h-7 text-xs">Enter</Button>
-                        </Link>
-                      ) : (
-                        <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(group)}>Join</Button>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {isMember || isAdmin ? (
+                          <Link to={`/campus/${group.id}`}>
+                            <Button size="sm" variant="secondary" className="h-7 text-xs">Enter</Button>
+                          </Link>
+                        ) : (
+                          <Button size="sm" className="h-7 text-xs gradient-brand border-0" onClick={() => handleJoin(group)}>Join</Button>
+                        )}
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={e => { e.stopPropagation(); setDeleteTarget(group); }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Card>
