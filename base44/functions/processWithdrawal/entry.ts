@@ -1,12 +1,12 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const PAYSTACK_SECRET = Deno.env.get('PAYSTACK_SECRET_KEY');
-
 async function paystackPost(path, body) {
+  // Read secret inside handler scope — never at module top-level
+  const secret = Deno.env.get('PAYSTACK_SECRET_KEY');
   const res = await fetch(`https://api.paystack.co${path}`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${PAYSTACK_SECRET}`,
+      Authorization: `Bearer ${secret}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
@@ -36,14 +36,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Insufficient balance. Available: ₦${wallet.balance.toLocaleString()}` }, { status: 400 });
     }
 
-    // Duplicate check — prevent same amount + account within 60 seconds
+    // Duplicate check — prevent same amount + account within 30 seconds
+    // Only check 'pending' status to avoid blocking legitimate retries
     const recent = await base44.asServiceRole.entities.WithdrawalRequest.filter({
       user_email: user.email,
       account_number,
-      status: 'approved',
     });
-    const sixtySecondsAgo = Date.now() - 60000;
-    const isDuplicate = recent.some(r => new Date(r.created_date).getTime() > sixtySecondsAgo && r.amount === amount);
+    const thirtySecondsAgo = Date.now() - 30000;
+    const isDuplicate = recent.some(
+      r => new Date(r.created_date).getTime() > thirtySecondsAgo && r.amount === amount && r.status === 'pending'
+    );
     if (isDuplicate) {
       return Response.json({ error: 'Duplicate withdrawal detected. Please wait a moment before retrying.' }, { status: 429 });
     }
@@ -60,8 +62,8 @@ Deno.serve(async (req) => {
     });
 
     if (!recipientRes.status || !recipientRes.data?.recipient_code) {
-      console.error('Paystack create recipient failed:', recipientRes);
-      return Response.json({ error: 'Could not create transfer recipient. Please check bank details.' }, { status: 400 });
+      console.error('Paystack create recipient failed:', JSON.stringify(recipientRes));
+      return Response.json({ error: recipientRes.message || 'Could not create transfer recipient. Please check bank details.' }, { status: 400 });
     }
 
     const recipient_code = recipientRes.data.recipient_code;
@@ -75,8 +77,10 @@ Deno.serve(async (req) => {
       reference,
     });
 
+    console.log('Paystack transfer response:', JSON.stringify(transferRes));
+
     if (!transferRes.status) {
-      console.error('Paystack transfer failed:', transferRes);
+      console.error('Paystack transfer failed:', JSON.stringify(transferRes));
       return Response.json({ error: transferRes.message || 'Transfer failed. Please try again.' }, { status: 400 });
     }
 
@@ -84,7 +88,7 @@ Deno.serve(async (req) => {
     const balanceBefore = wallet.balance;
     const balanceAfter = balanceBefore - amount;
 
-    // Deduct balance
+    // Deduct balance only after successful Paystack response
     await base44.asServiceRole.entities.Wallet.update(wallet.id, {
       balance: balanceAfter,
       total_withdrawn: (wallet.total_withdrawn || 0) + amount,
@@ -102,7 +106,7 @@ Deno.serve(async (req) => {
       status: transferStatus === 'success' ? 'completed' : 'pending',
     });
 
-    // Log withdrawal request
+    // Log withdrawal request as pending (not approved) until bank confirms
     await base44.asServiceRole.entities.WithdrawalRequest.create({
       user_email: user.email,
       user_name: user.full_name || '',
@@ -111,17 +115,17 @@ Deno.serve(async (req) => {
       bank_code,
       account_number,
       account_name,
-      status: 'approved',
+      status: 'pending',
       wallet_id: wallet.id,
       reference,
-      note: `Paystack transfer ${transferStatus}. Code: ${recipient_code}`,
+      note: `Paystack transfer ${transferStatus}. Recipient: ${recipient_code}`,
     });
 
     // Notify user in-app
     await base44.asServiceRole.entities.Notification.create({
       user_email: user.email,
       type: 'marketplace',
-      content: `Your withdrawal of ₦${amount.toLocaleString()} to ${account_name} (${bank}) has been sent to your bank. Ref: ${reference}`,
+      content: `Your withdrawal of ₦${amount.toLocaleString()} to ${account_name} (${bank}) is being processed. Ref: ${reference}`,
       is_read: false,
     });
 
@@ -131,19 +135,19 @@ Deno.serve(async (req) => {
       await base44.asServiceRole.entities.Notification.create({
         user_email: admin.email,
         type: 'marketplace',
-        content: `Withdrawal of ₦${amount.toLocaleString()} by ${user.full_name || user.email} to ${account_name} (${bank} ${account_number}). Status: ${transferStatus}. Ref: ${reference}`,
+        content: `Withdrawal of ₦${amount.toLocaleString()} by ${user.full_name || user.email} to ${account_name} (${bank} ${account_number}). Paystack status: ${transferStatus}. Ref: ${reference}`,
         is_read: false,
       });
     }
 
-    console.log(`Withdrawal processed: ${user.email} -₦${amount} → ${account_name} (${reference}) status: ${transferStatus}`);
+    console.log(`Withdrawal initiated: ${user.email} -₦${amount} → ${account_name} (${reference}) Paystack status: ${transferStatus}`);
 
     return Response.json({
       success: true,
       reference,
       transfer_status: transferStatus,
       balance_after: balanceAfter,
-      message: `₦${amount.toLocaleString()} has been sent to ${account_name}'s bank account.`,
+      message: `₦${amount.toLocaleString()} withdrawal initiated to ${account_name}'s bank account. Funds typically arrive within minutes.`,
     });
 
   } catch (error) {

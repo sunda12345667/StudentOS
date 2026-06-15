@@ -10,6 +10,7 @@ import VoiceRecorder from './VoiceRecorder';
 
 export default function ChatComposer({ value, onChange, onSubmit, disabled, inputRef, onAfterSend, onFocusChange, onSendAttachment }) {
   const textareaRef = useRef(null);
+  const composerRef = useRef(null);
   const [showEmoji, setShowEmoji] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const [showVoice, setShowVoice] = useState(false);
@@ -106,18 +107,25 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
     setShowVoice(false);
   };
 
-  // Close popovers on outside click
+  // Set CSS vars so the fixed emoji picker positions itself above the toolbar
   useEffect(() => {
-    if (!showEmoji && !showAttach) return;
+    if (!showEmoji || !composerRef.current) return;
+    const rect = composerRef.current.getBoundingClientRect();
+    const bottomOffset = window.innerHeight - rect.top + 8;
+    const rightOffset = window.innerWidth - rect.right + 4;
+    document.documentElement.style.setProperty('--emoji-picker-bottom', `${bottomOffset}px`);
+    document.documentElement.style.setProperty('--emoji-picker-right', `${Math.max(rightOffset, 12)}px`);
+  }, [showEmoji]);
+
+  // Close attach popover on outside click (emoji picker handles its own closing)
+  useEffect(() => {
+    if (!showAttach) return;
     const handler = (e) => {
-      if (!e.target.closest('[data-composer-popover]')) {
-        setShowEmoji(false);
-        setShowAttach(false);
-      }
+      if (!e.target.closest('[data-composer-popover]')) setShowAttach(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [showEmoji, showAttach]);
+  }, [showAttach]);
 
   if (showVoice) {
     return (
@@ -130,6 +138,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
 
   return (
     <div
+      ref={composerRef}
       className="flex-shrink-0 border-t border-border/50 bg-card/80 backdrop-blur-sm"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 8px)', touchAction: 'manipulation' }}
     >
@@ -220,6 +229,7 @@ export default function ChatComposer({ value, onChange, onSubmit, disabled, inpu
           {showEmoji && (
             <EmojiPicker onSelect={insertEmoji} onClose={() => setShowEmoji(false)} />
           )}
+          {/* Portal-like spacer so the fixed picker doesn't shift layout */}
         </div>
 
         {/* Send / Mic button */}
