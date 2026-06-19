@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import { Heart, MessageCircle, Share2, Play, Volume2, VolumeX, BookOpen, Flag, Pause } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Play, BookOpen, Flag, Pause } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { formatDistanceToNow, differenceInSeconds, differenceInMinutes, differenceInHours, differenceInDays } from 'date-fns';
 import ReelComments from '@/components/reels/ReelComments';
@@ -40,7 +40,6 @@ export default function ReelPlayer({ reel, user, isActive, onLike, onUpdate }) {
   const videoRef = useRef(null);
   const sheetRef = useRef(null);
   const [playing, setPlaying] = useState(false);
-  const [muted, setMuted] = useState(true);
   const [showTapIcon, setShowTapIcon] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
@@ -139,7 +138,7 @@ export default function ReelPlayer({ reel, user, isActive, onLike, onUpdate }) {
         <video
           ref={videoRef}
           src={reel.video_url}
-          muted={muted}
+          muted={false}
           loop
           playsInline
           preload="auto"
@@ -170,18 +169,12 @@ export default function ReelPlayer({ reel, user, isActive, onLike, onUpdate }) {
         </AnimatePresence>
 
         {/* Top controls */}
-        <div className="absolute top-4 left-0 right-0 z-20 flex items-start justify-between px-4 pointer-events-none">
+        <div className="absolute top-4 left-0 right-0 z-20 flex items-start px-4 pointer-events-none">
           {reel.subject && (
             <Badge className="bg-primary/80 text-white border-0 text-[10px] pointer-events-auto">
               <BookOpen className="w-2.5 h-2.5 mr-1" />{reel.subject}
             </Badge>
           )}
-          <button
-            className="ml-auto p-2 rounded-full bg-black/40 text-white pointer-events-auto"
-            onClick={e => { e.stopPropagation(); setMuted(m => !m); }}
-          >
-            {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
         </div>
 
         {/* Side action buttons */}
