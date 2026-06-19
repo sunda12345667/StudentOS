@@ -20,6 +20,7 @@ export default function AppLayout() {
   const location = useLocation();
 
   const isChatPage = CHAT_PAGES.some(p => location.pathname.startsWith(p));
+  const isReelsPage = location.pathname === '/reels';
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 768);
@@ -56,7 +57,8 @@ export default function AppLayout() {
   const sidebarWidth = isMobile ? 0 : collapsed ? 64 : 240;
 
   // On chat pages, remove bottom padding so the chat can use full viewport
-  const bottomPad = isMobile && isChatPage ? 0 : 96;
+  // On reels page, zero out all padding — snap scroll handles its own layout
+  const bottomPad = isReelsPage ? 0 : isMobile && isChatPage ? 0 : 96;
 
   return (
     <div className="bg-background" style={{ minHeight: '100dvh' }}>
@@ -73,12 +75,21 @@ export default function AppLayout() {
 
       {/* Main content */}
       <main
-        className="transition-all duration-300 overflow-y-auto"
-        style={{
+        className="transition-all duration-300"
+        style={isReelsPage ? {
+          // Reels: fixed full-screen, no padding — snap scroll takes over
+          position: 'fixed',
+          top: 0,
+          left: sidebarWidth,
+          right: 0,
+          bottom: 0,
+          overflow: 'hidden',
+        } : {
           paddingTop: isMobile ? 56 : 64,
           paddingLeft: sidebarWidth,
           paddingBottom: bottomPad,
           minHeight: '100dvh',
+          overflowY: 'auto',
         }}
       >
         <Outlet context={{ user: enrichedUser, profile, refreshProfile: () => {}, isMobile, keyboardOpen }} />
