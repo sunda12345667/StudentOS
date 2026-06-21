@@ -25,8 +25,9 @@ export default function StoriesBar({ user }) {
 
   useEffect(() => {
     base44.entities.Story.list('-created_date', 50).then(data => {
+      const now = new Date();
       const map = {};
-      data.forEach(s => {
+      data.filter(s => !s.expires_at || new Date(s.expires_at) > now).forEach(s => {
         if (!map[s.author_email]) {
           map[s.author_email] = {
             author_email: s.author_email,
