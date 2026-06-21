@@ -1,9 +1,12 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const AuthContext = createContext();
+
+const SESSION_INACTIVITY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const LAST_ACTIVE_KEY = 'sos_last_active';
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -12,7 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(null);
+  const inactivityTimer = useRef(null);
 
   useEffect(() => {
     checkAppState();
@@ -114,15 +118,47 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Reset inactivity timer on user activity
+  const resetActivityTimer = useCallback(() => {
+    localStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString());
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    inactivityTimer.current = setTimeout(() => {
+      logout(true);
+    }, SESSION_INACTIVITY_MS);
+  }, []);
+
+  // Check if session has already expired on page load
+  const checkSessionExpiry = useCallback(() => {
+    const lastActive = localStorage.getItem(LAST_ACTIVE_KEY);
+    if (lastActive && Date.now() - parseInt(lastActive) > SESSION_INACTIVITY_MS) {
+      localStorage.removeItem(LAST_ACTIVE_KEY);
+      return true; // expired
+    }
+    return false;
+  }, []);
+
+  // Attach activity listeners once authenticated
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (checkSessionExpiry()) { logout(true); return; }
+    resetActivityTimer();
+    const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    const onActivity = () => resetActivityTimer();
+    events.forEach(e => window.addEventListener(e, onActivity, { passive: true }));
+    return () => {
+      events.forEach(e => window.removeEventListener(e, onActivity));
+      if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
+    };
+  }, [isAuthenticated, resetActivityTimer, checkSessionExpiry]);
+
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    
+    localStorage.removeItem(LAST_ACTIVE_KEY);
+    if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
     if (shouldRedirect) {
-      // Use the SDK's logout method which handles token cleanup and redirect
-      base44.auth.logout(window.location.href);
+      base44.auth.logout('/login');
     } else {
-      // Just remove the token without redirect
       base44.auth.logout();
     }
   };

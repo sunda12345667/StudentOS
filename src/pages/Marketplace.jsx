@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ShoppingBag, Search, Plus, Loader2, SlidersHorizontal, TrendingUp, Package, ShieldCheck, BarChart2, Wallet } from 'lucide-react';
+import { ShoppingBag, Search, Plus, Loader2, SlidersHorizontal, TrendingUp, Package, ShieldCheck, BarChart2, Wallet, PieChart } from 'lucide-react';
 import ItemCard, { CAT_CONFIG } from '@/components/marketplace/ItemCard';
 import ItemDetail from '@/components/marketplace/ItemDetail';
 import CreateListing from '@/components/marketplace/CreateListing';
@@ -14,6 +14,7 @@ import MyListings from '@/components/marketplace/MyListings';
 import OrderManagement from '@/components/marketplace/OrderManagement';
 import SellerAnalytics from '@/components/marketplace/SellerAnalytics';
 import WalletDashboard from '@/components/marketplace/WalletDashboard';
+import UserFinancialDashboard from '@/components/marketplace/UserFinancialDashboard';
 
 const SORT_OPTIONS = [
   { value: '-created_date', label: 'Newest First' },
@@ -108,6 +109,7 @@ export default function Marketplace() {
             <TabsTrigger value="orders" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Orders</TabsTrigger>
             <TabsTrigger value="analytics" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Analytics</TabsTrigger>
             <TabsTrigger value="wallet" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Wallet</TabsTrigger>
+            <TabsTrigger value="finances" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />My Finances</TabsTrigger>
           </TabsList>
         </div>
 
@@ -191,6 +193,10 @@ export default function Marketplace() {
 
         <TabsContent value="wallet">
           <WalletDashboard user={user} />
+        </TabsContent>
+
+        <TabsContent value="finances">
+          <UserFinancialDashboard user={user} />
         </TabsContent>
       </Tabs>
 

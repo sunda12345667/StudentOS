@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { ShieldCheck, Truck, CheckCircle2, XCircle, Clock, Package, Loader2, AlertTriangle, ShoppingBag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { getOrCreateWallet, recordTransaction } from '@/lib/wallet';
 import { motion } from 'framer-motion';
 
 const STATUS_CONFIG = {
@@ -116,39 +115,19 @@ export default function OrderManagement({ user }) {
     if (action === 'shipped' && tracking) updates.tracking_info = tracking;
 
     if (action === 'completed') {
-      updates.escrow_released = true;
-      // Credit seller wallet
-      const sellerWallet = await getOrCreateWallet(order.seller_email, order.seller_name);
-      await recordTransaction(sellerWallet, {
-        type: 'escrow_release',
-        amount: order.price,
-        description: `Payment received for "${order.item_title}"`,
-        orderId: order.id,
-        counterpartyEmail: order.buyer_email,
-        counterpartyName: order.buyer_name,
-      });
+      // Delegate atomic escrow release to backend (handles ledger, wallet, notifications)
+      const res = await base44.functions.invoke('releaseEscrow', { order_id: order.id, trigger: 'buyer_confirmed' });
+      if (res.data?.error) { toast.error(res.data.error); return; }
       await base44.entities.MarketItem.update(order.item_id, { status: 'sold' }).catch(() => {});
-      // Notify seller
-      await base44.entities.Notification.create({
-        user_email: order.seller_email, from_name: order.buyer_name,
-        type: 'announcement',
-        content: `₦${Number(order.price).toLocaleString()} has been released to your wallet for "${order.item_title}"`,
-      }).catch(() => {});
+      // Status already updated by releaseEscrow backend
+      setBuying(prev => prev.map(o => o.id === order.id ? { ...o, status: 'completed', escrow_released: true } : o));
+      setSelling(prev => prev.map(o => o.id === order.id ? { ...o, status: 'completed', escrow_released: true } : o));
+      toast.success('Payment released to seller!');
+      return;
     }
 
     if (action === 'cancelled') {
-      // Refund buyer if escrow was held
-      if (order.status === 'escrow_held') {
-        const buyerWallet = await getOrCreateWallet(order.buyer_email, order.buyer_name);
-        await recordTransaction(buyerWallet, {
-          type: 'refund',
-          amount: order.price,
-          description: `Refund for cancelled order: "${order.item_title}"`,
-          orderId: order.id,
-          counterpartyEmail: order.seller_email,
-          counterpartyName: order.seller_name,
-        });
-      }
+      updates.status = 'cancelled';
       await base44.entities.MarketItem.update(order.item_id, { status: 'available' }).catch(() => {});
     }
 
