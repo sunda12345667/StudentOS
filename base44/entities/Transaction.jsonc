@@ -2,23 +2,48 @@
   "name": "Transaction",
   "type": "object",
   "properties": {
+    "reference": {
+      "type": "string"
+    },
     "user_email": {
+      "type": "string"
+    },
+    "user_name": {
       "type": "string"
     },
     "type": {
       "type": "string",
       "enum": [
-        "fund",
-        "payment",
+        "deposit",
+        "purchase",
+        "sale",
+        "commission",
+        "refund",
+        "withdrawal",
         "escrow_hold",
         "escrow_release",
-        "withdrawal",
-        "refund"
+        "adjustment",
+        "bonus",
+        "freeze",
+        "unfreeze"
       ],
-      "default": "fund"
+      "default": "deposit"
     },
     "amount": {
       "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "balance_type": {
+      "type": "string",
+      "enum": [
+        "wallet_balance",
+        "pending_earnings",
+        "available_earnings"
+      ],
+      "default": "wallet_balance"
     },
     "balance_before": {
       "type": "number"
@@ -29,10 +54,13 @@
     "description": {
       "type": "string"
     },
-    "reference": {
+    "order_id": {
       "type": "string"
     },
-    "order_id": {
+    "item_id": {
+      "type": "string"
+    },
+    "item_title": {
       "type": "string"
     },
     "counterparty_email": {
@@ -46,9 +74,17 @@
       "enum": [
         "pending",
         "completed",
-        "failed"
+        "failed",
+        "reversed"
       ],
       "default": "completed"
+    },
+    "reversal_of": {
+      "type": "string",
+      "description": "ID of original transaction being reversed"
+    },
+    "metadata": {
+      "type": "object"
     }
   },
   "required": [

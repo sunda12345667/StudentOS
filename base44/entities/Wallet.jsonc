@@ -8,9 +8,20 @@
     "user_name": {
       "type": "string"
     },
-    "balance": {
+    "wallet_balance": {
       "type": "number",
-      "default": 0
+      "default": 0,
+      "description": "Deposited funds \u2014 usable for purchases, ads, subscriptions. Cannot be withdrawn."
+    },
+    "pending_earnings": {
+      "type": "number",
+      "default": 0,
+      "description": "Sales revenue held in escrow \u2014 not yet withdrawable."
+    },
+    "available_earnings": {
+      "type": "number",
+      "default": 0,
+      "description": "Released earnings \u2014 withdrawable to bank."
     },
     "total_funded": {
       "type": "number",
@@ -27,6 +38,13 @@
     "total_withdrawn": {
       "type": "number",
       "default": 0
+    },
+    "is_frozen": {
+      "type": "boolean",
+      "default": false
+    },
+    "freeze_reason": {
+      "type": "string"
     }
   },
   "required": [

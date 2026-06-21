@@ -1,0 +1,54 @@
+{
+  "name": "Revenue",
+  "type": "object",
+  "properties": {
+    "source_type": {
+      "type": "string",
+      "enum": [
+        "commission",
+        "ad_spend",
+        "subscription",
+        "adjustment"
+      ],
+      "default": "commission"
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "item_id": {
+      "type": "string"
+    },
+    "item_title": {
+      "type": "string"
+    },
+    "payer_email": {
+      "type": "string"
+    },
+    "payer_name": {
+      "type": "string"
+    },
+    "seller_email": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "commission_rate": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "description": {
+      "type": "string"
+    },
+    "transaction_ref": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_type",
+    "amount"
+  ]
+}

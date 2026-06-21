@@ -1,0 +1,79 @@
+{
+  "name": "EarningsEscrow",
+  "type": "object",
+  "properties": {
+    "order_id": {
+      "type": "string"
+    },
+    "seller_email": {
+      "type": "string"
+    },
+    "seller_name": {
+      "type": "string"
+    },
+    "buyer_email": {
+      "type": "string"
+    },
+    "item_id": {
+      "type": "string"
+    },
+    "item_title": {
+      "type": "string"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "digital",
+        "physical"
+      ],
+      "default": "digital"
+    },
+    "gross_amount": {
+      "type": "number",
+      "description": "Full purchase price"
+    },
+    "commission_amount": {
+      "type": "number",
+      "description": "Platform commission deducted"
+    },
+    "net_amount": {
+      "type": "number",
+      "description": "Amount seller will receive after commission"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "holding",
+        "released",
+        "refunded",
+        "disputed"
+      ],
+      "default": "holding"
+    },
+    "hold_until": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "released_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "release_trigger": {
+      "type": "string",
+      "enum": [
+        "auto_timer",
+        "buyer_confirmed",
+        "admin_override",
+        "refunded"
+      ],
+      "description": "What caused the release"
+    }
+  },
+  "required": [
+    "order_id",
+    "seller_email",
+    "buyer_email",
+    "gross_amount",
+    "net_amount"
+  ]
+}

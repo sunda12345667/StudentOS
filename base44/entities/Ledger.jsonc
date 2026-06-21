@@ -1,0 +1,81 @@
+{
+  "name": "Ledger",
+  "type": "object",
+  "properties": {
+    "entry_id": {
+      "type": "string",
+      "description": "Unique idempotency key"
+    },
+    "transaction_ref": {
+      "type": "string"
+    },
+    "order_id": {
+      "type": "string"
+    },
+    "debit_account": {
+      "type": "string",
+      "description": "Who/what is debited (email or system account name)"
+    },
+    "credit_account": {
+      "type": "string",
+      "description": "Who/what is credited"
+    },
+    "debit_type": {
+      "type": "string",
+      "enum": [
+        "wallet_balance",
+        "pending_earnings",
+        "available_earnings",
+        "platform_revenue",
+        "escrow"
+      ]
+    },
+    "credit_type": {
+      "type": "string",
+      "enum": [
+        "wallet_balance",
+        "pending_earnings",
+        "available_earnings",
+        "platform_revenue",
+        "escrow"
+      ]
+    },
+    "amount": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "default": "NGN"
+    },
+    "description": {
+      "type": "string"
+    },
+    "entry_type": {
+      "type": "string",
+      "enum": [
+        "purchase",
+        "sale_escrow",
+        "commission",
+        "escrow_release",
+        "refund",
+        "withdrawal",
+        "deposit",
+        "adjustment"
+      ],
+      "default": "purchase"
+    },
+    "is_reversal": {
+      "type": "boolean",
+      "default": false
+    },
+    "reversal_of_entry": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "debit_account",
+    "credit_account",
+    "amount",
+    "entry_type"
+  ]
+}

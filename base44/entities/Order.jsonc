@@ -2,6 +2,9 @@
   "name": "Order",
   "type": "object",
   "properties": {
+    "reference": {
+      "type": "string"
+    },
     "item_id": {
       "type": "string"
     },
@@ -10,6 +13,14 @@
     },
     "item_image": {
       "type": "string"
+    },
+    "item_type": {
+      "type": "string",
+      "enum": [
+        "digital",
+        "physical"
+      ],
+      "default": "digital"
     },
     "buyer_email": {
       "type": "string"
@@ -26,6 +37,18 @@
     "price": {
       "type": "number"
     },
+    "commission_rate": {
+      "type": "number",
+      "default": 10
+    },
+    "commission_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "seller_payout": {
+      "type": "number",
+      "default": 0
+    },
     "delivery_option": {
       "type": "string",
       "enum": [
@@ -33,21 +56,26 @@
         "delivery",
         "digital"
       ],
-      "default": "pickup"
+      "default": "digital"
     },
     "delivery_address": {
+      "type": "string"
+    },
+    "tracking_info": {
       "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
         "pending",
-        "escrow_held",
+        "paid",
+        "processing",
         "shipped",
         "delivered",
         "completed",
-        "disputed",
-        "cancelled"
+        "cancelled",
+        "refunded",
+        "disputed"
       ],
       "default": "pending"
     },
@@ -55,10 +83,21 @@
       "type": "boolean",
       "default": false
     },
-    "tracking_info": {
-      "type": "string"
+    "buyer_confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "auto_release_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "notes": {
+      "type": "string"
+    },
+    "refund_reason": {
+      "type": "string"
+    },
+    "dispute_reason": {
       "type": "string"
     }
   },

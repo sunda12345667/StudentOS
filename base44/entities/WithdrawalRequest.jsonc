@@ -2,6 +2,9 @@
   "name": "WithdrawalRequest",
   "type": "object",
   "properties": {
+    "reference": {
+      "type": "string"
+    },
     "user_email": {
       "type": "string"
     },
@@ -30,18 +33,26 @@
       "type": "string",
       "enum": [
         "pending",
+        "under_review",
         "approved",
+        "paid",
         "rejected"
       ],
-      "default": "approved"
+      "default": "pending"
     },
     "admin_note": {
+      "type": "string"
+    },
+    "reviewed_by": {
       "type": "string"
     },
     "wallet_id": {
       "type": "string"
     },
-    "reference": {
+    "paystack_transfer_code": {
+      "type": "string"
+    },
+    "paystack_recipient_code": {
       "type": "string"
     }
   },

@@ -1,6 +1,6 @@
 /**
- * Wallet helper utilities
- * All wallet mutations go through these functions to ensure consistency.
+ * Wallet service layer
+ * All balance reads go through these helpers. Never mutate balances outside these functions.
  */
 import { base44 } from '@/api/base44Client';
 
@@ -11,48 +11,28 @@ export async function getOrCreateWallet(userEmail, userName = '') {
   return base44.entities.Wallet.create({
     user_email: userEmail,
     user_name: userName,
-    balance: 0,
+    wallet_balance: 0,
+    pending_earnings: 0,
+    available_earnings: 0,
     total_funded: 0,
     total_spent: 0,
     total_earned: 0,
     total_withdrawn: 0,
+    is_frozen: false,
   });
 }
 
-/** Record a transaction and update wallet balance */
-export async function recordTransaction(wallet, { type, amount, description, reference = '', orderId = '', counterpartyEmail = '', counterpartyName = '' }) {
-  const balanceBefore = wallet.balance;
-  let delta = 0;
+/** Total spendable = wallet_balance only (earnings are not for spending) */
+export function getSpendableBalance(wallet) {
+  return wallet?.wallet_balance || 0;
+}
 
-  if (type === 'fund') delta = amount;
-  else if (type === 'payment' || type === 'escrow_hold') delta = -amount;
-  else if (type === 'escrow_release' || type === 'refund') delta = amount;
-  else if (type === 'withdrawal') delta = -amount;
+/** Total withdrawable = available_earnings only */
+export function getWithdrawableBalance(wallet) {
+  return wallet?.available_earnings || 0;
+}
 
-  const balanceAfter = balanceBefore + delta;
-
-  // Update wallet totals
-  const walletUpdate = { balance: balanceAfter };
-  if (type === 'fund') walletUpdate.total_funded = (wallet.total_funded || 0) + amount;
-  if (type === 'payment' || type === 'escrow_hold') walletUpdate.total_spent = (wallet.total_spent || 0) + amount;
-  if (type === 'escrow_release') walletUpdate.total_earned = (wallet.total_earned || 0) + amount;
-  if (type === 'withdrawal') walletUpdate.total_withdrawn = (wallet.total_withdrawn || 0) + amount;
-
-  await base44.entities.Wallet.update(wallet.id, walletUpdate);
-
-  await base44.entities.Transaction.create({
-    user_email: wallet.user_email,
-    type,
-    amount,
-    balance_before: balanceBefore,
-    balance_after: balanceAfter,
-    description,
-    reference,
-    order_id: orderId,
-    counterparty_email: counterpartyEmail,
-    counterparty_name: counterpartyName,
-    status: 'completed',
-  });
-
-  return { ...wallet, ...walletUpdate };
+/** Sum of all three balances */
+export function getTotalBalance(wallet) {
+  return (wallet?.wallet_balance || 0) + (wallet?.pending_earnings || 0) + (wallet?.available_earnings || 0);
 }
