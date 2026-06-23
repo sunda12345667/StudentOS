@@ -7,7 +7,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Truck, MapPin, Download, ShieldCheck, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { getOrCreateWallet } from '@/lib/wallet';
 
 const DELIVERY_OPTIONS = [
   { value: 'pickup', icon: MapPin, label: 'Pickup', desc: 'Meet the seller in person', color: 'border-blue-200 bg-blue-50 text-blue-700' },
@@ -26,23 +25,30 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
 
   const placeOrder = async () => {
     setSaving(true);
-    // Pre-check wallet balance client-side for fast feedback
-    const wallet = await getOrCreateWallet(buyer.email, buyer.full_name);
-    if ((wallet.wallet_balance || 0) < item.price) {
+    try {
+      // Fresh balance check against the server before attempting purchase
+      const wallets = await base44.entities.Wallet.filter({ user_email: buyer.email });
+      const wallet = wallets[0];
+      if (!wallet || (wallet.wallet_balance || 0) < item.price) {
+        const bal = wallet?.wallet_balance || 0;
+        toast.error(`Insufficient wallet balance. You have ₦${bal.toLocaleString()} but need ₦${Number(item.price).toLocaleString()}. Please fund your wallet to continue.`);
+        setSaving(false);
+        return;
+      }
+
+      const res = await base44.functions.invoke('purchaseProduct', { item_id: item.id });
+      if (res.data?.error) {
+        toast.error(res.data.error);
+        setSaving(false);
+        return;
+      }
+      setStep(3);
+      toast.success('Order placed! Payment deducted & held in escrow.');
+    } catch (e) {
+      toast.error(e?.message || 'Purchase failed. Please try again.');
+    } finally {
       setSaving(false);
-      toast.error(`Insufficient wallet balance (₦${(wallet.wallet_balance || 0).toLocaleString()}). Please fund your wallet first.`);
-      return;
     }
-    // Delegate full atomic purchase + ledger to backend function
-    const res = await base44.functions.invoke('purchaseProduct', { item_id: item.id });
-    if (res.data?.error) {
-      setSaving(false);
-      toast.error(res.data.error);
-      return;
-    }
-    setSaving(false);
-    setStep(3);
-    toast.success('Order placed! Payment deducted & held in escrow.');
   };
 
   return (

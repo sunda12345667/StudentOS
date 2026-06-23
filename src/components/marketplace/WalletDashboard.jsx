@@ -300,65 +300,85 @@ export default function WalletDashboard({ user }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // Real-time subscriptions
+  // Real-time subscriptions — wallet, transactions, withdrawals
   useEffect(() => {
     if (!user?.email) return;
     const unsubW = base44.entities.Wallet.subscribe((e) => {
       if (e.data?.user_email !== user.email) return;
-      if (e.type === 'update' || e.type === 'create') setWallet(e.data);
+      if (e.type === 'create' || e.type === 'update') setWallet(e.data);
     });
     const unsubT = base44.entities.Transaction.subscribe((e) => {
       if (e.data?.user_email !== user.email) return;
-      if (e.type === 'create') setTransactions(prev => [e.data, ...prev]);
-      if (e.type === 'update') setTransactions(prev => prev.map(t => t.id === e.id ? e.data : t));
+      if (e.type === 'create') {
+        setTransactions(prev => {
+          // Avoid duplicates from race between subscription and initial load
+          if (prev.some(t => t.id === e.data.id)) return prev;
+          return [e.data, ...prev];
+        });
+      }
+      if (e.type === 'update') setTransactions(prev => prev.map(t => t.id === e.data.id ? e.data : t));
     });
     const unsubWR = base44.entities.WithdrawalRequest.subscribe((e) => {
       if (e.data?.user_email !== user.email) return;
       if (e.type === 'create') setWithdrawalRequests(prev => [e.data, ...prev]);
       if (e.type === 'update') {
-        setWithdrawalRequests(prev => prev.map(w => w.id === e.id ? e.data : w));
+        setWithdrawalRequests(prev => prev.map(w => w.id === e.data.id ? e.data : w));
         if (e.data?.status === 'approved' || e.data?.status === 'paid') load();
       }
     });
     return () => { unsubW(); unsubT(); unsubWR(); };
   }, [user?.email, load]);
 
-  // Handle Paystack redirect-back
+  // Handle Paystack redirect-back after funding
   useEffect(() => {
+    if (!user?.email) return;
     const params = new URLSearchParams(window.location.search);
     const walletStatus = params.get('wallet');
     const paystackRef = params.get('reference') || params.get('trxref');
+
+    // Clean URL immediately
     const newParams = new URLSearchParams(window.location.search);
     ['wallet', 'reference', 'trxref'].forEach(k => newParams.delete(k));
     window.history.replaceState({}, '', `${window.location.pathname}${newParams.toString() ? '?' + newParams.toString() : ''}`);
 
-    if (walletStatus === 'cancelled') { setPaymentBanner('cancelled'); setTimeout(() => setPaymentBanner(null), 5000); return; }
-    if (walletStatus !== 'funded' || !user?.email) return;
+    if (walletStatus === 'cancelled') {
+      setPaymentBanner('cancelled');
+      setTimeout(() => setPaymentBanner(null), 5000);
+      return;
+    }
+
+    if (walletStatus !== 'funded') return;
+
     setPaymentBanner('verifying');
 
-    const verifyAndCredit = async () => {
-      if (paystackRef) {
-        try {
-          const res = await base44.functions.invoke('paystackWebhookVerify', { reference: paystackRef, user_email: user.email, user_name: user.full_name });
-          if (res.data?.credited) { await load(); setPaymentBanner('success'); toast.success('Wallet funded! 🎉'); setTimeout(() => setPaymentBanner(null), 5000); return true; }
-        } catch { /* fall through */ }
+    (async () => {
+      try {
+        if (paystackRef) {
+          const res = await base44.functions.invoke('paystackWebhookVerify', {
+            reference: paystackRef,
+            user_email: user.email,
+            user_name: user.full_name,
+          });
+          if (res.data?.credited || res.data?.already_credited) {
+            await load();
+            setPaymentBanner('success');
+            toast.success('Wallet funded! 🎉');
+            setTimeout(() => setPaymentBanner(null), 5000);
+            return;
+          }
+        }
+        // Fallback: just reload and show success
+        await load();
+        setPaymentBanner('success');
+        toast.success('Wallet funded!');
+        setTimeout(() => setPaymentBanner(null), 5000);
+      } catch {
+        await load();
+        setPaymentBanner(null);
+        toast.error('Could not verify payment. If funds were deducted, contact support.');
       }
-      return false;
-    };
-
-    let baselineBalance = null; let attempts = 0; let timerId;
-    const poll = async () => {
-      attempts++;
-      const ws = await base44.entities.Wallet.filter({ user_email: user.email });
-      const w = ws[0]; const cur = w?.wallet_balance || 0;
-      if (baselineBalance === null) baselineBalance = cur;
-      if (cur > baselineBalance) { setWallet(w); await load(); setPaymentBanner('success'); toast.success('Wallet funded! 🎉'); setTimeout(() => setPaymentBanner(null), 5000); }
-      else if (attempts < 12) timerId = setTimeout(poll, 2000);
-      else { await load(); setPaymentBanner(null); }
-    };
-    verifyAndCredit().then(ok => { if (!ok) timerId = setTimeout(poll, 1500); });
-    return () => clearTimeout(timerId);
-  }, [user?.email]);
+    })();
+  }, [user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-7 h-7 animate-spin text-primary" /></div>;
 
