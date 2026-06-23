@@ -1,46 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
-import { ShieldCheck, Truck, CheckCircle2, XCircle, Clock, Package, Loader2, AlertTriangle, ShoppingBag } from 'lucide-react';
+import {
+  ShieldCheck, Truck, CheckCircle2, XCircle, Clock, Package,
+  Loader2, AlertTriangle, ShoppingBag, Download, RefreshCw
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_CONFIG = {
-  pending:     { label: 'Pending',      color: 'bg-gray-100 text-gray-600',    icon: Clock },
-  escrow_held: { label: 'Escrow Held',  color: 'bg-amber-100 text-amber-700',  icon: ShieldCheck },
-  shipped:     { label: 'Shipped',      color: 'bg-blue-100 text-blue-700',    icon: Truck },
-  delivered:   { label: 'Delivered',    color: 'bg-indigo-100 text-indigo-700',icon: Package },
-  completed:   { label: 'Completed',    color: 'bg-green-100 text-green-700',  icon: CheckCircle2 },
-  disputed:    { label: 'Disputed',     color: 'bg-red-100 text-red-700',      icon: AlertTriangle },
-  cancelled:   { label: 'Cancelled',    color: 'bg-gray-100 text-gray-500',    icon: XCircle },
+  paid:        { label: 'Paid',          color: 'bg-blue-100 text-blue-700',    icon: ShieldCheck },
+  processing:  { label: 'Processing',    color: 'bg-amber-100 text-amber-700',  icon: Clock },
+  shipped:     { label: 'Shipped',       color: 'bg-indigo-100 text-indigo-700',icon: Truck },
+  delivered:   { label: 'Delivered',     color: 'bg-purple-100 text-purple-700',icon: Package },
+  completed:   { label: 'Completed',     color: 'bg-green-100 text-green-700',  icon: CheckCircle2 },
+  disputed:    { label: 'Disputed',      color: 'bg-red-100 text-red-700',      icon: AlertTriangle },
+  cancelled:   { label: 'Cancelled',     color: 'bg-gray-100 text-gray-500',    icon: XCircle },
+  refunded:    { label: 'Refunded',      color: 'bg-gray-100 text-gray-500',    icon: RefreshCw },
 };
 
 function OrderCard({ order, isBuyer, onAction }) {
   const [trackingInput, setTrackingInput] = useState(order.tracking_info || '');
-  const [processing, setProcessing] = useState(false);
-  const stCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
+  const [processingAction, setProcessingAction] = useState(null);
+  const stCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.paid;
   const Icon = stCfg.icon;
 
-  const handleActionClick = async (action, tracking = '') => {
-    setProcessing(true);
+  const handleAction = async (action, extra = {}) => {
+    setProcessingAction(action);
     try {
-      await onAction(order, action, tracking);
+      await onAction(order, action, extra);
     } finally {
-      setProcessing(false);
+      setProcessingAction(null);
     }
   };
 
+  const isProcessing = (action) => processingAction === action;
+  const anyProcessing = processingAction !== null;
+
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} layout>
       <Card className="p-4 space-y-3">
+        {/* Header */}
         <div className="flex items-start gap-3">
           <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden flex-shrink-0">
-            {order.item_image ? <img src={order.item_image} className="w-full h-full object-cover" /> : <div className="w-full h-full gradient-brand opacity-40" />}
+            {order.item_image
+              ? <img src={order.item_image} className="w-full h-full object-cover" alt={order.item_title} />
+              : <div className="w-full h-full gradient-brand opacity-40" />}
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm truncate">{order.item_title}</p>
@@ -49,10 +59,13 @@ function OrderCard({ order, isBuyer, onAction }) {
           </div>
           <div className="text-right flex-shrink-0">
             <p className="font-black text-primary">₦{Number(order.price).toLocaleString()}</p>
-            <Badge className={`${stCfg.color} border-0 text-[10px] gap-0.5 mt-1`}><Icon className="w-2.5 h-2.5" />{stCfg.label}</Badge>
+            <Badge className={`${stCfg.color} border-0 text-[10px] gap-0.5 mt-1`}>
+              <Icon className="w-2.5 h-2.5" />{stCfg.label}
+            </Badge>
           </div>
         </div>
 
+        {/* Delivery info */}
         {order.delivery_option && (
           <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             {order.delivery_option === 'pickup' ? '📍' : order.delivery_option === 'digital' ? '📱' : '🚚'}
@@ -61,51 +74,95 @@ function OrderCard({ order, isBuyer, onAction }) {
           </p>
         )}
 
-        {/* Seller actions */}
+        {/* Digital download (buyer, completed digital order) */}
+        {isBuyer && order.item_type === 'digital' && order.status === 'completed' && order.file_url && (
+          <a href={order.file_url} target="_blank" rel="noopener noreferrer">
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1 w-full border-primary text-primary">
+              <Download className="w-3.5 h-3.5" /> Download File
+            </Button>
+          </a>
+        )}
+
+        {/* ── SELLER ACTIONS ── */}
         {!isBuyer && (
           <div className="flex gap-2 flex-wrap">
-            {order.status === 'escrow_held' && (
+            {/* Approve: paid → processing */}
+            {order.status === 'paid' && (
               <>
-                <div className="flex gap-2 flex-1">
-                  <Input value={trackingInput} onChange={e => setTrackingInput(e.target.value)} placeholder="Tracking #" className="h-8 text-xs flex-1" />
-                  <Button size="sm" disabled={processing} className="h-8 text-xs gradient-brand border-0 whitespace-nowrap" onClick={() => handleActionClick('shipped', trackingInput)}>
-                    {processing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Mark Shipped
-                  </Button>
-                </div>
+                <Button size="sm" disabled={anyProcessing} className="h-8 text-xs gradient-brand border-0 gap-1 flex-1"
+                  onClick={() => handleAction('approve')}>
+                  {isProcessing('approve') ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Approve Order
+                </Button>
+                <Button size="sm" variant="outline" disabled={anyProcessing} className="h-8 text-xs text-destructive"
+                  onClick={() => handleAction('cancel')}>
+                  {isProcessing('cancel') ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                  Cancel
+                </Button>
               </>
             )}
-            {order.status === 'pending' && (
-              <Button size="sm" variant="outline" disabled={processing} className="h-8 text-xs text-destructive" onClick={() => handleActionClick('cancelled')}>
-                {processing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Cancel
+
+            {/* Mark Shipped: processing → shipped */}
+            {order.status === 'processing' && order.item_type === 'physical' && (
+              <div className="flex gap-2 flex-1">
+                <Input value={trackingInput} onChange={e => setTrackingInput(e.target.value)}
+                  placeholder="Tracking # (optional)" className="h-8 text-xs flex-1" />
+                <Button size="sm" disabled={anyProcessing} className="h-8 text-xs gradient-brand border-0 whitespace-nowrap"
+                  onClick={() => handleAction('mark_shipped', { tracking_info: trackingInput })}>
+                  {isProcessing('mark_shipped') ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Truck className="w-3.5 h-3.5 mr-1" />}
+                  Mark Shipped
+                </Button>
+              </div>
+            )}
+
+            {/* Mark Delivered: shipped → delivered */}
+            {order.status === 'shipped' && (
+              <Button size="sm" disabled={anyProcessing} className="h-8 text-xs gradient-brand border-0 gap-1 flex-1"
+                onClick={() => handleAction('mark_delivered')}>
+                {isProcessing('mark_delivered') ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Package className="w-3.5 h-3.5" />}
+                Mark Delivered
               </Button>
             )}
           </div>
         )}
 
-        {/* Buyer actions */}
+        {/* ── BUYER ACTIONS ── */}
         {isBuyer && (
           <div className="flex gap-2 flex-wrap">
-            {(order.status === 'shipped' || order.status === 'delivered') && (
-              <Button size="sm" disabled={processing} className="h-8 text-xs gradient-brand border-0 gap-1" onClick={() => handleActionClick('completed')}>
-                {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />} Release Payment
+            {/* Confirm receipt (releases escrow immediately) */}
+            {['shipped', 'delivered', 'processing'].includes(order.status) && !order.escrow_released && (
+              <Button size="sm" disabled={anyProcessing} className="h-8 text-xs gradient-brand border-0 gap-1 flex-1"
+                onClick={() => handleAction('confirm_received')}>
+                {isProcessing('confirm_received') ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+                Confirm & Release Payment
               </Button>
             )}
-            {order.status === 'escrow_held' && (
-              <Button size="sm" variant="outline" disabled={processing} className="h-8 text-xs text-destructive" onClick={() => handleActionClick('disputed')}>
-                {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <AlertTriangle className="w-3.5 h-3.5 mr-1" />} Dispute
+
+            {/* Cancel (only before seller ships) */}
+            {['paid', 'processing'].includes(order.status) && (
+              <Button size="sm" variant="outline" disabled={anyProcessing} className="h-8 text-xs text-destructive"
+                onClick={() => handleAction('cancel')}>
+                {isProcessing('cancel') ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                Cancel Order
               </Button>
             )}
-            {order.status === 'pending' && (
-              <Button size="sm" variant="outline" disabled={processing} className="h-8 text-xs text-destructive" onClick={() => handleActionClick('cancelled')}>
-                {processing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Cancel
+
+            {/* Dispute */}
+            {['shipped', 'delivered'].includes(order.status) && (
+              <Button size="sm" variant="outline" disabled={anyProcessing} className="h-8 text-xs text-destructive"
+                onClick={() => handleAction('dispute')}>
+                {isProcessing('dispute') ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <AlertTriangle className="w-3.5 h-3.5 mr-1" />}
+                Dispute
               </Button>
             )}
           </div>
         )}
 
-        {order.status === 'completed' && !order.escrow_released && (
+        {/* Completion banner */}
+        {order.status === 'completed' && (
           <div className="p-2 rounded-lg bg-green-50 border border-green-100 text-xs text-green-700 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />Payment released to seller. Transaction complete!
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+            Transaction complete! Payment released to seller.
           </div>
         )}
       </Card>
@@ -118,58 +175,126 @@ export default function OrderManagement({ user }) {
   const [selling, setSelling] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const loadOrders = useCallback(async () => {
     if (!user?.email) return;
-    Promise.all([
-      base44.entities.Order.filter({ buyer_email: user.email }, '-created_date', 30),
-      base44.entities.Order.filter({ seller_email: user.email }, '-created_date', 30),
-    ]).then(([b, s]) => { setBuying(b); setSelling(s); }).finally(() => setLoading(false));
+    const [b, s] = await Promise.all([
+      base44.entities.Order.filter({ buyer_email: user.email }, '-created_date', 50),
+      base44.entities.Order.filter({ seller_email: user.email }, '-created_date', 50),
+    ]);
+    setBuying(b);
+    setSelling(s);
+    setLoading(false);
   }, [user?.email]);
 
-  const handleAction = async (order, action, tracking = '') => {
-    const updates = { status: action };
-    if (action === 'shipped' && tracking) updates.tracking_info = tracking;
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
 
-    if (action === 'completed') {
-      // Delegate atomic escrow release to backend (handles ledger, wallet, notifications)
-      const res = await base44.functions.invoke('releaseEscrow', { order_id: order.id, trigger: 'buyer_confirmed' });
-      if (res.data?.error) { toast.error(res.data.error); return; }
-      await base44.entities.MarketItem.update(order.item_id, { status: 'sold' }).catch(() => {});
-      // Status already updated by releaseEscrow backend
-      setBuying(prev => prev.map(o => o.id === order.id ? { ...o, status: 'completed', escrow_released: true } : o));
-      setSelling(prev => prev.map(o => o.id === order.id ? { ...o, status: 'completed', escrow_released: true } : o));
-      toast.success('Payment released to seller!');
+  // Real-time subscription — update order in state instantly when backend changes it
+  useEffect(() => {
+    if (!user?.email) return;
+    const unsub = base44.entities.Order.subscribe((event) => {
+      const updated = event.data;
+      if (!updated) return;
+      if (updated.buyer_email === user.email) {
+        setBuying(prev => {
+          const exists = prev.find(o => o.id === updated.id);
+          if (exists) return prev.map(o => o.id === updated.id ? { ...o, ...updated } : o);
+          if (event.type === 'create') return [updated, ...prev];
+          return prev;
+        });
+      }
+      if (updated.seller_email === user.email) {
+        setSelling(prev => {
+          const exists = prev.find(o => o.id === updated.id);
+          if (exists) return prev.map(o => o.id === updated.id ? { ...o, ...updated } : o);
+          if (event.type === 'create') return [updated, ...prev];
+          return prev;
+        });
+      }
+    });
+    return unsub;
+  }, [user?.email]);
+
+  const handleAction = async (order, action, extra = {}) => {
+    // Optimistic UI update first
+    const optimisticStatus = {
+      approve: 'processing',
+      mark_shipped: 'shipped',
+      mark_delivered: 'delivered',
+      confirm_received: 'completed',
+      cancel: 'cancelled',
+      dispute: 'disputed',
+    }[action];
+
+    if (optimisticStatus) {
+      const patch = { status: optimisticStatus, ...(action === 'confirm_received' ? { escrow_released: true } : {}), ...(extra.tracking_info ? { tracking_info: extra.tracking_info } : {}) };
+      setBuying(prev => prev.map(o => o.id === order.id ? { ...o, ...patch } : o));
+      setSelling(prev => prev.map(o => o.id === order.id ? { ...o, ...patch } : o));
+    }
+
+    const res = await base44.functions.invoke('updateOrderStatus', {
+      order_id: order.id,
+      action,
+      ...extra,
+    });
+
+    if (res.data?.error) {
+      // Revert optimistic update on error
+      toast.error(res.data.error);
+      loadOrders(); // Reload true state
       return;
     }
 
-    if (action === 'cancelled') {
-      updates.status = 'cancelled';
-      await base44.entities.MarketItem.update(order.item_id, { status: 'available' }).catch(() => {});
+    // Confirm with server state
+    if (res.data?.order) {
+      const serverOrder = res.data.order;
+      setBuying(prev => prev.map(o => o.id === order.id ? { ...o, ...serverOrder } : o));
+      setSelling(prev => prev.map(o => o.id === order.id ? { ...o, ...serverOrder } : o));
     }
 
-    await base44.entities.Order.update(order.id, updates);
-    setBuying(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
-    setSelling(prev => prev.map(o => o.id === order.id ? { ...o, ...updates } : o));
-    toast.success(`Order ${action}`);
+    const successMessages = {
+      approve: 'Order approved!',
+      mark_shipped: 'Order marked as shipped.',
+      mark_delivered: 'Order marked as delivered.',
+      confirm_received: 'Payment released to seller!',
+      cancel: 'Order cancelled and refunded.',
+      dispute: 'Dispute raised. Our team will review it.',
+    };
+    toast.success(successMessages[action] || 'Order updated.');
   };
 
-  if (loading) return <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <Tabs defaultValue="buying">
       <TabsList className="mb-4">
-        <TabsTrigger value="buying" className="gap-1.5"><ShoppingBag className="w-4 h-4" />Buying ({buying.length})</TabsTrigger>
-        <TabsTrigger value="selling" className="gap-1.5"><Package className="w-4 h-4" />Selling ({selling.length})</TabsTrigger>
+        <TabsTrigger value="buying" className="gap-1.5">
+          <ShoppingBag className="w-4 h-4" />Buying ({buying.length})
+        </TabsTrigger>
+        <TabsTrigger value="selling" className="gap-1.5">
+          <Package className="w-4 h-4" />Selling ({selling.length})
+        </TabsTrigger>
       </TabsList>
+
       <TabsContent value="buying">
-        {buying.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground"><ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No orders yet</p></div>
-        ) : <div className="space-y-3">{buying.map(o => <OrderCard key={o.id} order={o} isBuyer onAction={handleAction} />)}</div>}
+        {buying.length === 0
+          ? <div className="text-center py-12 text-muted-foreground"><ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No orders yet</p></div>
+          : <AnimatePresence><div className="space-y-3">{buying.map(o => <OrderCard key={o.id} order={o} isBuyer onAction={handleAction} />)}</div></AnimatePresence>
+        }
       </TabsContent>
+
       <TabsContent value="selling">
-        {selling.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground"><Package className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No incoming orders</p></div>
-        ) : <div className="space-y-3">{selling.map(o => <OrderCard key={o.id} order={o} isBuyer={false} onAction={handleAction} />)}</div>}
+        {selling.length === 0
+          ? <div className="text-center py-12 text-muted-foreground"><Package className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No incoming orders</p></div>
+          : <AnimatePresence><div className="space-y-3">{selling.map(o => <OrderCard key={o.id} order={o} isBuyer={false} onAction={handleAction} />)}</div></AnimatePresence>
+        }
       </TabsContent>
     </Tabs>
   );

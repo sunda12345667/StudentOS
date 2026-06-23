@@ -20,32 +20,25 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
   const [notes, setNotes] = useState('');
   const [step, setStep] = useState(1); // 1=options 2=escrow confirm 3=done
   const [saving, setSaving] = useState(false);
+  const [orderResult, setOrderResult] = useState(null);
 
   if (!item) return null;
 
   const placeOrder = async () => {
     setSaving(true);
     try {
-      // Fresh balance check against the server before attempting purchase
-      const wallets = await base44.entities.Wallet.filter({ user_email: buyer.email });
-      const wallet = wallets[0];
-      if (!wallet || (wallet.wallet_balance || 0) < item.price) {
-        toast.error('Insufficient wallet balance. Please fund your wallet to continue.');
-        setSaving(false);
-        return;
-      }
-
-      const res = await base44.functions.invoke('purchaseProduct', { item_id: item.id });
+      const res = await base44.functions.invoke('purchaseProduct', {
+        item_id: item.id,
+        delivery_option: delivery,
+        delivery_address: address,
+        notes,
+      });
       if (res.data?.error) {
         toast.error(res.data.error);
-        setSaving(false);
         return;
       }
-      toast.success('Order placed! Payment deducted & held in escrow.');
-      // Wait a moment then redirect to order management
-      setTimeout(() => {
-        window.location.href = '/marketplace?tab=orders';
-      }, 1500);
+      setOrderResult(res.data);
+      toast.success(res.data.message || 'Order placed successfully!');
       setStep(3);
     } catch (e) {
       toast.error(e?.message || 'Purchase failed. Please try again.');
@@ -140,10 +133,24 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
         {step === 3 && (
           <div className="text-center py-6 space-y-3">
             <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto" />
-            <h3 className="font-black text-xl">Order Placed Successfully!</h3>
-            <p className="text-sm text-muted-foreground">Payment deducted and securely held in escrow.</p>
-            <p className="text-xs text-muted-foreground animate-pulse">Redirecting to order confirmation...</p>
-            <Button onClick={() => window.location.href = '/marketplace?tab=orders'} className="gradient-brand border-0 w-full mt-4">Go to Orders Now</Button>
+            <h3 className="font-black text-xl">
+              {item.is_digital ? 'Purchase Complete!' : 'Order Placed!'}
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              {item.is_digital
+                ? 'Your payment has been processed and your download is ready.'
+                : 'Payment held in escrow. The seller will process your order shortly.'}
+            </p>
+            {item.is_digital && orderResult?.file_url && (
+              <a href={orderResult.file_url} target="_blank" rel="noopener noreferrer">
+                <Button className="gradient-brand border-0 w-full gap-2">
+                  <Download className="w-4 h-4" /> Download Now
+                </Button>
+              </a>
+            )}
+            <Button variant="outline" className="w-full" onClick={() => { onClose(); }}>
+              {item.is_digital ? 'Done' : 'View Orders'}
+            </Button>
           </div>
         )}
       </DialogContent>

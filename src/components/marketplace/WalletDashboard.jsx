@@ -451,7 +451,7 @@ export default function WalletDashboard({ user }) {
             <p className="text-3xl font-black text-amber-600">₦{pendingEarnings.toLocaleString()}</p>
             <p className="text-muted-foreground text-[10px] mt-1">Releasing after hold period</p>
             <div className="mt-3 text-[10px] text-amber-600 font-medium bg-amber-100 rounded-lg px-2 py-1.5">
-              Digital: 5-day hold • Physical: 14-day hold
+              Physical orders: held until buyer confirms receipt or 14-day auto-release
             </div>
           </CardContent>
         </Card>
