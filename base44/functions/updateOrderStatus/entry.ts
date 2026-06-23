@@ -31,14 +31,78 @@ Deno.serve(async (req) => {
     let notifyBuyer = null;
     let notifySeller = null;
 
-    // ── SELLER: Approve order (paid → processing) ──────────────────────────────
+    // ── SELLER: Approve order ──────────────────────────────────────────────────
+    // Digital: paid → completed instantly (escrow already released at purchase)
+    // Physical: paid → processing (escrow held until delivery confirmed)
     if (action === 'approve') {
       if (!isSeller && !isAdmin) return Response.json({ error: 'Only seller can approve' }, { status: 403 });
       if (order.status !== 'paid') return Response.json({ error: `Cannot approve order with status: ${order.status}` }, { status: 409 });
 
-      await base44.asServiceRole.entities.Order.update(order.id, { status: 'processing' });
-      updatedOrder = { ...order, status: 'processing' };
-      notifyBuyer = `Your order for "${order.item_title}" has been approved and is being processed.`;
+      if (order.item_type === 'digital') {
+        // Digital: release escrow now (pending → available) and expose the file
+        const [items, escrows, sellerWallets] = await Promise.all([
+          base44.asServiceRole.entities.MarketItem.filter({ id: order.item_id }),
+          base44.asServiceRole.entities.EarningsEscrow.filter({ order_id }),
+          base44.asServiceRole.entities.Wallet.filter({ user_email: order.seller_email }),
+        ]);
+        const item = items[0];
+        const escrow = escrows[0];
+        const sellerWallet = sellerWallets[0];
+        const fileUrl = item?.file_url || null;
+
+        if (sellerWallet && escrow && escrow.status === 'holding') {
+          const netAmount = escrow.net_amount;
+          const newPending = Math.max(0, (sellerWallet.pending_earnings || 0) - netAmount);
+          const newAvailable = (sellerWallet.available_earnings || 0) + netAmount;
+          const releaseRef = `REL-${order.reference || order_id}`;
+
+          await Promise.all([
+            base44.asServiceRole.entities.Wallet.update(sellerWallet.id, {
+              pending_earnings: newPending,
+              available_earnings: newAvailable,
+            }),
+            base44.asServiceRole.entities.EarningsEscrow.update(escrow.id, {
+              status: 'released', released_at: now, release_trigger: 'buyer_confirmed',
+            }),
+            base44.asServiceRole.entities.Order.update(order.id, {
+              status: 'completed', escrow_released: true, buyer_confirmed_at: now, file_url: fileUrl,
+            }),
+            base44.asServiceRole.entities.Ledger.create({
+              entry_id: releaseRef,
+              transaction_ref: releaseRef, order_id,
+              debit_account: `${order.seller_email}:pending`,
+              credit_account: `${order.seller_email}:available`,
+              debit_type: 'pending_earnings', credit_type: 'available_earnings',
+              amount: netAmount,
+              description: `Digital escrow release (seller approved): ${order.item_title}`,
+              entry_type: 'escrow_release',
+            }),
+            base44.asServiceRole.entities.Transaction.create({
+              reference: releaseRef,
+              user_email: order.seller_email, user_name: order.seller_name,
+              type: 'escrow_release', amount: netAmount,
+              balance_type: 'available_earnings',
+              balance_before: sellerWallet.available_earnings || 0, balance_after: newAvailable,
+              description: `Digital earnings released: ${order.item_title}`,
+              order_id, item_id: order.item_id, item_title: order.item_title,
+              counterparty_email: order.buyer_email, status: 'completed',
+            }),
+          ]);
+        } else {
+          await base44.asServiceRole.entities.Order.update(order.id, {
+            status: 'completed', escrow_released: true, buyer_confirmed_at: now, file_url: fileUrl,
+          });
+        }
+
+        updatedOrder = { ...order, status: 'completed', escrow_released: true, buyer_confirmed_at: now, file_url: fileUrl };
+        notifyBuyer = `Your purchase of "${order.item_title}" is approved! Your download is ready.`;
+        notifySeller = `You approved the order for "${order.item_title}". ₦${(order.seller_payout || 0).toLocaleString()} has been added to your available earnings.`;
+      } else {
+        // Physical: move to processing
+        await base44.asServiceRole.entities.Order.update(order.id, { status: 'processing' });
+        updatedOrder = { ...order, status: 'processing' };
+        notifyBuyer = `Your order for "${order.item_title}" has been approved and is being processed.`;
+      }
     }
 
     // ── SELLER: Mark shipped (processing → shipped) ────────────────────────────
@@ -63,9 +127,10 @@ Deno.serve(async (req) => {
       notifyBuyer = `Your order "${order.item_title}" has been marked as delivered. Please confirm receipt to release payment to the seller.`;
     }
 
-    // ── BUYER: Confirm received → releases escrow instantly ────────────────────
+    // ── BUYER: Confirm received → releases escrow (physical orders only) ──────
     else if (action === 'confirm_received') {
       if (!isBuyer && !isAdmin) return Response.json({ error: 'Only buyer can confirm receipt' }, { status: 403 });
+      if (order.item_type === 'digital') return Response.json({ error: 'Digital orders are completed automatically on seller approval.' }, { status: 409 });
       if (!['shipped', 'delivered', 'processing', 'paid'].includes(order.status)) {
         return Response.json({ error: `Cannot confirm receipt with status: ${order.status}` }, { status: 409 });
       }
@@ -128,7 +193,7 @@ Deno.serve(async (req) => {
       notifySeller = `₦${netAmount.toLocaleString()} from your sale of "${order.item_title}" is now available for withdrawal!`;
     }
 
-    // ── BUYER / SELLER: Cancel (only on paid status) ───────────────────────────
+    // ── BUYER / SELLER: Cancel (only before shipped/completed) ────────────────
     else if (action === 'cancel') {
       if (!['paid', 'processing'].includes(order.status)) {
         return Response.json({ error: `Cannot cancel order with status: ${order.status}` }, { status: 409 });

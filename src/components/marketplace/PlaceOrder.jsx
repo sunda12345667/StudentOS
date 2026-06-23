@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Truck, MapPin, Download, ShieldCheck, Loader2, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Truck, MapPin, Download, ShieldCheck, Loader2, CheckCircle2, ArrowRight, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DELIVERY_OPTIONS = [
@@ -134,22 +134,21 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
           <div className="text-center py-6 space-y-3">
             <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto" />
             <h3 className="font-black text-xl">
-              {item.is_digital ? 'Purchase Complete!' : 'Order Placed!'}
+              {item.is_digital ? 'Payment Received!' : 'Order Placed!'}
             </h3>
             <p className="text-sm text-muted-foreground">
               {item.is_digital
-                ? 'Your payment has been processed and your download is ready.'
+                ? 'Your payment is secured. The seller will approve your order and your download will be ready shortly.'
                 : 'Payment held in escrow. The seller will process your order shortly.'}
             </p>
-            {item.is_digital && orderResult?.file_url && (
-              <a href={orderResult.file_url} target="_blank" rel="noopener noreferrer">
-                <Button className="gradient-brand border-0 w-full gap-2">
-                  <Download className="w-4 h-4" /> Download Now
-                </Button>
-              </a>
+            {item.is_digital && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700 flex items-center gap-2">
+                <Clock className="w-4 h-4 flex-shrink-0" />
+                Check your <strong>Library tab</strong> in Orders once the seller approves.
+              </div>
             )}
-            <Button variant="outline" className="w-full" onClick={() => { onClose(); }}>
-              {item.is_digital ? 'Done' : 'View Orders'}
+            <Button variant="outline" className="w-full" onClick={onClose}>
+              {item.is_digital ? 'View My Orders' : 'View Orders'}
             </Button>
           </div>
         )}

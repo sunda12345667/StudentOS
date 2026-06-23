@@ -76,26 +76,24 @@ Deno.serve(async (req) => {
       total_spent: (buyerWallet.total_spent || 0) + price,
     });
 
-    // ── 7. Credit seller (digital=available_earnings immediately, physical=pending_earnings) ─
-    let sellerNewPending = sellerWallet.pending_earnings || 0;
+    // ── 7. Credit seller to pending_earnings (escrow) for both digital and physical ─
+    // Digital escrow is released instantly when seller clicks Approve
+    // Physical escrow is released when buyer confirms receipt
+    let sellerNewPending = (sellerWallet.pending_earnings || 0) + sellerPayout;
     let sellerNewAvailable = sellerWallet.available_earnings || 0;
-    if (isDigital) {
-      sellerNewAvailable += sellerPayout;
-    } else {
-      sellerNewPending += sellerPayout;
-    }
     await base44.asServiceRole.entities.Wallet.update(sellerWallet.id, {
       pending_earnings: sellerNewPending,
       available_earnings: sellerNewAvailable,
       total_earned: (sellerWallet.total_earned || 0) + sellerPayout,
     });
 
-    // ── 8. Auto-release date (physical only) ─────────────────────────────────
-    const autoReleaseAt = isDigital ? now : new Date(Date.now() + PHYSICAL_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
+    // ── 8. Auto-release date (physical only; digital released on seller approval) ──
+    const autoReleaseAt = isDigital ? null : new Date(Date.now() + PHYSICAL_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
     // ── 9. Create Order ────────────────────────────────────────────────────────
-    // Digital: status=completed, escrow_released=true immediately
-    // Physical: status=paid, awaiting seller to approve/ship
+    // Both digital and physical start as 'paid' — seller must Approve
+    // Digital: on seller Approve → status=completed, file_url exposed, escrow released
+    // Physical: on seller Approve → status=processing → shipped → delivered → buyer confirms
     const order = await base44.asServiceRole.entities.Order.create({
       reference: ref,
       item_id: item.id,
@@ -113,13 +111,14 @@ Deno.serve(async (req) => {
       delivery_option: delivery_option || (isDigital ? 'digital' : 'pickup'),
       delivery_address: delivery_address || '',
       notes: notes || '',
-      status: isDigital ? 'completed' : 'paid',
-      escrow_released: isDigital,
+      status: 'paid',
+      escrow_released: false,
       auto_release_at: autoReleaseAt,
-      buyer_confirmed_at: isDigital ? now : null,
+      buyer_confirmed_at: null,
     });
 
     // ── 10. EarningsEscrow ────────────────────────────────────────────────────
+    // Both digital and physical start in 'holding' — released on seller Approve (digital) or buyer confirm (physical)
     await base44.asServiceRole.entities.EarningsEscrow.create({
       order_id: order.id,
       seller_email: item.seller_email,
@@ -131,67 +130,43 @@ Deno.serve(async (req) => {
       gross_amount: price,
       commission_amount: commissionAmount,
       net_amount: sellerPayout,
-      status: isDigital ? 'released' : 'holding',
+      status: 'holding',
       hold_until: autoReleaseAt,
-      released_at: isDigital ? now : null,
-      release_trigger: isDigital ? 'buyer_confirmed' : null,
+      released_at: null,
+      release_trigger: null,
     });
 
     // ── 11. Double-entry Ledger ────────────────────────────────────────────────
-    if (isDigital) {
-      // Digital: buyer wallet → seller available (direct, no escrow hold)
-      await Promise.all([
-        base44.asServiceRole.entities.Ledger.create({
-          entry_id: `${ref}-PURCHASE`,
-          transaction_ref: ref, order_id: order.id,
-          debit_account: user.email, credit_account: item.seller_email,
-          debit_type: 'wallet_balance', credit_type: 'available_earnings',
-          amount: sellerPayout,
-          description: `Digital purchase: ${item.title}`,
-          entry_type: 'purchase',
-        }),
-        base44.asServiceRole.entities.Ledger.create({
-          entry_id: `${ref}-COMMISSION`,
-          transaction_ref: ref, order_id: order.id,
-          debit_account: user.email, credit_account: PLATFORM_ACCOUNT,
-          debit_type: 'wallet_balance', credit_type: 'platform_revenue',
-          amount: commissionAmount,
-          description: `Commission (${commissionRate}%): ${item.title}`,
-          entry_type: 'commission',
-        }),
-      ]);
-    } else {
-      // Physical: buyer wallet → escrow → seller pending (held)
-      await Promise.all([
-        base44.asServiceRole.entities.Ledger.create({
-          entry_id: `${ref}-PURCHASE`,
-          transaction_ref: ref, order_id: order.id,
-          debit_account: user.email, credit_account: 'escrow@studentos.internal',
-          debit_type: 'wallet_balance', credit_type: 'escrow',
-          amount: price,
-          description: `Purchase (escrow hold): ${item.title}`,
-          entry_type: 'purchase',
-        }),
-        base44.asServiceRole.entities.Ledger.create({
-          entry_id: `${ref}-SALE`,
-          transaction_ref: ref, order_id: order.id,
-          debit_account: 'escrow@studentos.internal', credit_account: item.seller_email,
-          debit_type: 'escrow', credit_type: 'pending_earnings',
-          amount: sellerPayout,
-          description: `Sale credit (pending): ${item.title}`,
-          entry_type: 'sale_escrow',
-        }),
-        base44.asServiceRole.entities.Ledger.create({
-          entry_id: `${ref}-COMMISSION`,
-          transaction_ref: ref, order_id: order.id,
-          debit_account: 'escrow@studentos.internal', credit_account: PLATFORM_ACCOUNT,
-          debit_type: 'escrow', credit_type: 'platform_revenue',
-          amount: commissionAmount,
-          description: `Commission (${commissionRate}%): ${item.title}`,
-          entry_type: 'commission',
-        }),
-      ]);
-    }
+    // Both flows: buyer wallet → escrow → seller pending (held until approval/delivery)
+    await Promise.all([
+      base44.asServiceRole.entities.Ledger.create({
+        entry_id: `${ref}-PURCHASE`,
+        transaction_ref: ref, order_id: order.id,
+        debit_account: user.email, credit_account: 'escrow@studentos.internal',
+        debit_type: 'wallet_balance', credit_type: 'escrow',
+        amount: price,
+        description: `Purchase (escrow): ${item.title}`,
+        entry_type: 'purchase',
+      }),
+      base44.asServiceRole.entities.Ledger.create({
+        entry_id: `${ref}-SALE`,
+        transaction_ref: ref, order_id: order.id,
+        debit_account: 'escrow@studentos.internal', credit_account: item.seller_email,
+        debit_type: 'escrow', credit_type: 'pending_earnings',
+        amount: sellerPayout,
+        description: `Sale credit (pending): ${item.title}`,
+        entry_type: 'sale_escrow',
+      }),
+      base44.asServiceRole.entities.Ledger.create({
+        entry_id: `${ref}-COMMISSION`,
+        transaction_ref: ref, order_id: order.id,
+        debit_account: 'escrow@studentos.internal', credit_account: PLATFORM_ACCOUNT,
+        debit_type: 'escrow', credit_type: 'platform_revenue',
+        amount: commissionAmount,
+        description: `Commission (${commissionRate}%): ${item.title}`,
+        entry_type: 'commission',
+      }),
+    ]);
 
     // ── 12. Transaction records ───────────────────────────────────────────────
     await Promise.all([
@@ -210,12 +185,10 @@ Deno.serve(async (req) => {
         reference: `${ref}-SELL`,
         user_email: item.seller_email, user_name: item.seller_name,
         type: 'sale', amount: sellerPayout,
-        balance_type: isDigital ? 'available_earnings' : 'pending_earnings',
-        balance_before: isDigital ? (sellerWallet.available_earnings || 0) : (sellerWallet.pending_earnings || 0),
-        balance_after: isDigital ? sellerNewAvailable : sellerNewPending,
-        description: isDigital
-          ? `Sale (instant): ${item.title} — Commission ₦${commissionAmount} deducted`
-          : `Sale (pending escrow): ${item.title} — Commission ₦${commissionAmount} deducted`,
+        balance_type: 'pending_earnings',
+        balance_before: sellerWallet.pending_earnings || 0,
+        balance_after: sellerNewPending,
+        description: `Sale (pending escrow): ${item.title} — Commission ₦${commissionAmount} deducted`,
         order_id: order.id, item_id: item.id, item_title: item.title,
         counterparty_email: user.email, counterparty_name: user.full_name,
         status: 'completed',
@@ -234,26 +207,25 @@ Deno.serve(async (req) => {
     });
 
     // ── 14. Mark item sold/reserved ───────────────────────────────────────────
-    if (isDigital) {
-      // Digital items can be re-purchased; keep available unless seller wants sold
-    } else {
+    if (!isDigital) {
       await base44.asServiceRole.entities.MarketItem.update(item.id, { status: 'reserved' });
     }
+    // Digital items stay 'available' — can be purchased by multiple buyers
 
     // ── 15. Notifications ─────────────────────────────────────────────────────
     await Promise.all([
       base44.asServiceRole.entities.Notification.create({
         user_email: user.email, type: 'marketplace',
         content: isDigital
-          ? `Purchase successful! Your download for "${item.title}" is ready.`
+          ? `Payment received for "${item.title}"! Waiting for seller to approve your order.`
           : `Order placed! ₦${price.toLocaleString()} is held in escrow until delivery is confirmed.`,
         link: '/marketplace', entity_type: 'Order', entity_id: order.id, is_read: false,
       }),
       base44.asServiceRole.entities.Notification.create({
         user_email: item.seller_email, type: 'marketplace',
         content: isDigital
-          ? `New sale! "${item.title}" — ₦${sellerPayout.toLocaleString()} added to your available earnings.`
-          : `New order! "${item.title}" — ₦${sellerPayout.toLocaleString()} held in escrow. Please process the order.`,
+          ? `New order for "${item.title}"! Please approve to release the download to the buyer.`
+          : `New order for "${item.title}" — ₦${sellerPayout.toLocaleString()} held in escrow. Please process the order.`,
         link: '/marketplace', entity_type: 'Order', entity_id: order.id, is_read: false,
       }),
     ]);
@@ -266,8 +238,9 @@ Deno.serve(async (req) => {
       commission_amount: commissionAmount,
       seller_payout: sellerPayout,
       is_digital: isDigital,
-      file_url: isDigital ? item.file_url : null,
-      message: isDigital ? 'Purchase complete! Your download is ready.' : 'Order placed! Payment held in escrow.',
+      message: isDigital
+        ? 'Payment received! Waiting for seller to approve your order.'
+        : 'Order placed! Payment held in escrow.',
     });
 
   } catch (error) {

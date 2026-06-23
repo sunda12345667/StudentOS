@@ -22,6 +22,10 @@
       ],
       "default": "digital"
     },
+    "file_url": {
+      "type": "string",
+      "description": "Download URL exposed after seller approves a digital order"
+    },
     "buyer_email": {
       "type": "string"
     },

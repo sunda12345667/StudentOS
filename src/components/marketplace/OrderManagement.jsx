@@ -7,21 +7,21 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import {
   ShieldCheck, Truck, CheckCircle2, XCircle, Clock, Package,
-  Loader2, AlertTriangle, ShoppingBag, Download, RefreshCw
+  Loader2, AlertTriangle, ShoppingBag, Download, RefreshCw, BookOpen
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const STATUS_CONFIG = {
-  paid:        { label: 'Paid',          color: 'bg-blue-100 text-blue-700',    icon: ShieldCheck },
-  processing:  { label: 'Processing',    color: 'bg-amber-100 text-amber-700',  icon: Clock },
-  shipped:     { label: 'Shipped',       color: 'bg-indigo-100 text-indigo-700',icon: Truck },
-  delivered:   { label: 'Delivered',     color: 'bg-purple-100 text-purple-700',icon: Package },
-  completed:   { label: 'Completed',     color: 'bg-green-100 text-green-700',  icon: CheckCircle2 },
-  disputed:    { label: 'Disputed',      color: 'bg-red-100 text-red-700',      icon: AlertTriangle },
-  cancelled:   { label: 'Cancelled',     color: 'bg-gray-100 text-gray-500',    icon: XCircle },
-  refunded:    { label: 'Refunded',      color: 'bg-gray-100 text-gray-500',    icon: RefreshCw },
+  paid:        { label: 'Awaiting Approval', color: 'bg-blue-100 text-blue-700',    icon: Clock },
+  processing:  { label: 'Processing',        color: 'bg-amber-100 text-amber-700',  icon: Clock },
+  shipped:     { label: 'Shipped',           color: 'bg-indigo-100 text-indigo-700',icon: Truck },
+  delivered:   { label: 'Delivered',         color: 'bg-purple-100 text-purple-700',icon: Package },
+  completed:   { label: 'Completed',         color: 'bg-green-100 text-green-700',  icon: CheckCircle2 },
+  disputed:    { label: 'Disputed',          color: 'bg-red-100 text-red-700',      icon: AlertTriangle },
+  cancelled:   { label: 'Cancelled',         color: 'bg-gray-100 text-gray-500',    icon: XCircle },
+  refunded:    { label: 'Refunded',          color: 'bg-gray-100 text-gray-500',    icon: RefreshCw },
 };
 
 function OrderCard({ order, isBuyer, onAction }) {
@@ -75,12 +75,22 @@ function OrderCard({ order, isBuyer, onAction }) {
         )}
 
         {/* Digital download (buyer, completed digital order) */}
-        {isBuyer && order.item_type === 'digital' && order.status === 'completed' && order.file_url && (
-          <a href={order.file_url} target="_blank" rel="noopener noreferrer">
-            <Button size="sm" variant="outline" className="h-8 text-xs gap-1 w-full border-primary text-primary">
-              <Download className="w-3.5 h-3.5" /> Download File
-            </Button>
-          </a>
+        {isBuyer && order.item_type === 'digital' && order.status === 'completed' && (
+          order.file_url
+            ? <a href={order.file_url} target="_blank" rel="noopener noreferrer">
+                <Button size="sm" className="h-8 text-xs gap-1 w-full gradient-brand border-0">
+                  <Download className="w-3.5 h-3.5" /> Download File
+                </Button>
+              </a>
+            : <p className="text-xs text-muted-foreground text-center py-1">No downloadable file attached to this item.</p>
+        )}
+
+        {/* Awaiting seller approval banner for digital */}
+        {isBuyer && order.item_type === 'digital' && order.status === 'paid' && (
+          <div className="p-2 rounded-lg bg-blue-50 border border-blue-100 text-xs text-blue-700 flex items-center gap-2">
+            <Clock className="w-4 h-4 flex-shrink-0" />
+            Payment received. Waiting for the seller to approve your order.
+          </div>
         )}
 
         {/* ── SELLER ACTIONS ── */}
@@ -272,13 +282,18 @@ export default function OrderManagement({ user }) {
     );
   }
 
+  const digitalPurchases = buying.filter(o => o.item_type === 'digital' && o.status === 'completed');
+
   return (
     <Tabs defaultValue="buying">
-      <TabsList className="mb-4">
-        <TabsTrigger value="buying" className="gap-1.5">
-          <ShoppingBag className="w-4 h-4" />Buying ({buying.length})
+      <TabsList className="mb-4 flex">
+        <TabsTrigger value="buying" className="gap-1.5 flex-1">
+          <ShoppingBag className="w-4 h-4" />Orders ({buying.length})
         </TabsTrigger>
-        <TabsTrigger value="selling" className="gap-1.5">
+        <TabsTrigger value="library" className="gap-1.5 flex-1">
+          <BookOpen className="w-4 h-4" />Library ({digitalPurchases.length})
+        </TabsTrigger>
+        <TabsTrigger value="selling" className="gap-1.5 flex-1">
           <Package className="w-4 h-4" />Selling ({selling.length})
         </TabsTrigger>
       </TabsList>
@@ -288,6 +303,51 @@ export default function OrderManagement({ user }) {
           ? <div className="text-center py-12 text-muted-foreground"><ShoppingBag className="w-10 h-10 mx-auto mb-3 opacity-30" /><p>No orders yet</p></div>
           : <AnimatePresence><div className="space-y-3">{buying.map(o => <OrderCard key={o.id} order={o} isBuyer onAction={handleAction} />)}</div></AnimatePresence>
         }
+      </TabsContent>
+
+      <TabsContent value="library">
+        {digitalPurchases.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground">
+            <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="font-medium">No purchased items yet</p>
+            <p className="text-xs mt-1">Approved digital purchases will appear here.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {digitalPurchases.map(o => (
+              <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+                <Card className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-14 h-14 rounded-xl bg-muted overflow-hidden flex-shrink-0">
+                      {o.item_image
+                        ? <img src={o.item_image} className="w-full h-full object-cover" alt={o.item_title} />
+                        : <div className="w-full h-full gradient-brand opacity-40 flex items-center justify-center"><Download className="w-5 h-5 text-white" /></div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm">{o.item_title}</p>
+                      <p className="text-xs text-muted-foreground">by {o.seller_name}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Purchased {o.buyer_confirmed_at ? format(new Date(o.buyer_confirmed_at), 'MMM d, yyyy') : format(new Date(o.created_date), 'MMM d, yyyy')}
+                        {' · '}Order #{o.reference || o.id.slice(0, 8)}
+                      </p>
+                      <p className="text-xs font-semibold text-primary mt-0.5">₦{Number(o.price).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3">
+                    {o.file_url
+                      ? <a href={o.file_url} target="_blank" rel="noopener noreferrer">
+                          <Button size="sm" className="w-full h-9 text-xs gap-2 gradient-brand border-0">
+                            <Download className="w-4 h-4" /> Download Now
+                          </Button>
+                        </a>
+                      : <p className="text-xs text-muted-foreground text-center py-2">No file attached — contact seller.</p>
+                    }
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="selling">
