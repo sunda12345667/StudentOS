@@ -22,8 +22,18 @@ const STATUS_CONFIG = {
 
 function OrderCard({ order, isBuyer, onAction }) {
   const [trackingInput, setTrackingInput] = useState(order.tracking_info || '');
+  const [processing, setProcessing] = useState(false);
   const stCfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const Icon = stCfg.icon;
+
+  const handleActionClick = async (action, tracking = '') => {
+    setProcessing(true);
+    try {
+      await onAction(order, action, tracking);
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -58,12 +68,16 @@ function OrderCard({ order, isBuyer, onAction }) {
               <>
                 <div className="flex gap-2 flex-1">
                   <Input value={trackingInput} onChange={e => setTrackingInput(e.target.value)} placeholder="Tracking #" className="h-8 text-xs flex-1" />
-                  <Button size="sm" className="h-8 text-xs gradient-brand border-0 whitespace-nowrap" onClick={() => onAction(order, 'shipped', trackingInput)}>Mark Shipped</Button>
+                  <Button size="sm" disabled={processing} className="h-8 text-xs gradient-brand border-0 whitespace-nowrap" onClick={() => handleActionClick('shipped', trackingInput)}>
+                    {processing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Mark Shipped
+                  </Button>
                 </div>
               </>
             )}
             {order.status === 'pending' && (
-              <Button size="sm" variant="outline" className="h-8 text-xs text-destructive" onClick={() => onAction(order, 'cancelled')}>Cancel</Button>
+              <Button size="sm" variant="outline" disabled={processing} className="h-8 text-xs text-destructive" onClick={() => handleActionClick('cancelled')}>
+                {processing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Cancel
+              </Button>
             )}
           </div>
         )}
@@ -72,17 +86,19 @@ function OrderCard({ order, isBuyer, onAction }) {
         {isBuyer && (
           <div className="flex gap-2 flex-wrap">
             {(order.status === 'shipped' || order.status === 'delivered') && (
-              <Button size="sm" className="h-8 text-xs gradient-brand border-0 gap-1" onClick={() => onAction(order, 'completed')}>
-                <ShieldCheck className="w-3.5 h-3.5" />Release Payment
+              <Button size="sm" disabled={processing} className="h-8 text-xs gradient-brand border-0 gap-1" onClick={() => handleActionClick('completed')}>
+                {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />} Release Payment
               </Button>
             )}
             {order.status === 'escrow_held' && (
-              <Button size="sm" variant="outline" className="h-8 text-xs text-destructive" onClick={() => onAction(order, 'disputed')}>
-                <AlertTriangle className="w-3.5 h-3.5 mr-1" />Dispute
+              <Button size="sm" variant="outline" disabled={processing} className="h-8 text-xs text-destructive" onClick={() => handleActionClick('disputed')}>
+                {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <AlertTriangle className="w-3.5 h-3.5 mr-1" />} Dispute
               </Button>
             )}
             {order.status === 'pending' && (
-              <Button size="sm" variant="outline" className="h-8 text-xs text-destructive" onClick={() => onAction(order, 'cancelled')}>Cancel</Button>
+              <Button size="sm" variant="outline" disabled={processing} className="h-8 text-xs text-destructive" onClick={() => handleActionClick('cancelled')}>
+                {processing ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null} Cancel
+              </Button>
             )}
           </div>
         )}

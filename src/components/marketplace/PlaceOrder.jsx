@@ -30,8 +30,7 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
       const wallets = await base44.entities.Wallet.filter({ user_email: buyer.email });
       const wallet = wallets[0];
       if (!wallet || (wallet.wallet_balance || 0) < item.price) {
-        const bal = wallet?.wallet_balance || 0;
-        toast.error(`Insufficient wallet balance. You have ₦${bal.toLocaleString()} but need ₦${Number(item.price).toLocaleString()}. Please fund your wallet to continue.`);
+        toast.error('Insufficient wallet balance. Please fund your wallet to continue.');
         setSaving(false);
         return;
       }
@@ -42,8 +41,12 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
         setSaving(false);
         return;
       }
-      setStep(3);
       toast.success('Order placed! Payment deducted & held in escrow.');
+      // Wait a moment then redirect to order management
+      setTimeout(() => {
+        window.location.href = '/marketplace?tab=orders';
+      }, 1500);
+      setStep(3);
     } catch (e) {
       toast.error(e?.message || 'Purchase failed. Please try again.');
     } finally {
@@ -137,9 +140,10 @@ export default function PlaceOrder({ item, open, onClose, buyer }) {
         {step === 3 && (
           <div className="text-center py-6 space-y-3">
             <CheckCircle2 className="w-14 h-14 text-green-500 mx-auto" />
-            <h3 className="font-black text-xl">Order Placed!</h3>
-            <p className="text-sm text-muted-foreground">Payment held in escrow. The seller has been notified. Check <strong>Order Management</strong> to track your order.</p>
-            <Button onClick={onClose} className="gradient-brand border-0">Done</Button>
+            <h3 className="font-black text-xl">Order Placed Successfully!</h3>
+            <p className="text-sm text-muted-foreground">Payment deducted and securely held in escrow.</p>
+            <p className="text-xs text-muted-foreground animate-pulse">Redirecting to order confirmation...</p>
+            <Button onClick={() => window.location.href = '/marketplace?tab=orders'} className="gradient-brand border-0 w-full mt-4">Go to Orders Now</Button>
           </div>
         )}
       </DialogContent>

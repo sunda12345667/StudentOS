@@ -168,10 +168,10 @@ export default function ItemDetail({ item, open, onClose, currentUser }) {
             {/* Buy / Order CTA */}
             {!isOwn && item.status === 'available' && (
               <div className="flex gap-2 pt-1">
-                <Button onClick={() => setOrderOpen(true)} className="flex-1 gradient-brand border-0 gap-2 h-11">
+                <Button onClick={() => setOrderOpen(true)} className="flex-1 gradient-brand border-0 gap-2 h-11 transition-all active:scale-[0.98]">
                   <ShieldCheck className="w-4 h-4" />Buy with Escrow
                 </Button>
-                <Button variant="outline" size="icon" className="h-11 w-11" onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied!'); }}>
+                <Button variant="outline" size="icon" className="h-11 w-11 transition-all active:scale-[0.98]" onClick={() => { navigator.clipboard.writeText(window.location.href); toast.success('Link copied!'); }}>
                   <Share2 className="w-4 h-4" />
                 </Button>
               </div>

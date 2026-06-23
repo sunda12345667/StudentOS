@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CAT_CONFIG } from './ItemCard';
 import { Loader2, X, Tag, Upload, FileText } from 'lucide-react';
+import { toast } from 'sonner';
 
 const CONDITIONS = [
   { value: 'new', label: '✨ New' },
@@ -36,26 +37,32 @@ export default function CreateListing({ open, onClose, user, onCreated }) {
     if (!form.title.trim() || !form.price) return;
     if (form.is_digital && !materialFile) { return; }
     setSaving(true);
-    let image_url = '';
-    let file_url = '';
-    if (imageFile) {
-      const r = await base44.integrations.Core.UploadFile({ file: imageFile });
-      image_url = r.file_url;
+    try {
+      let image_url = '';
+      let file_url = '';
+      if (imageFile) {
+        const r = await base44.integrations.Core.UploadFile({ file: imageFile });
+        image_url = r.file_url;
+      }
+      if (materialFile) {
+        const r = await base44.integrations.Core.UploadFile({ file: materialFile });
+        file_url = r.file_url;
+      }
+      await base44.entities.MarketItem.create({
+        ...form, price: Number(form.price), image_url, file_url,
+        seller_email: user.email, seller_name: user.full_name,
+        seller_avatar: user.avatar_url || '', status: 'available', views: 0,
+      });
+      toast.success('Listing created successfully!');
+      setForm({ title: '', description: '', price: '', category: 'textbook', condition: 'good', subject: '', grade_level: '', is_digital: false });
+      setImageFile(null); setImagePreview(null); setMaterialFile(null);
+      onCreated?.();
+      onClose();
+    } catch (e) {
+      toast.error(e.message || 'Failed to create listing. Please try again.');
+    } finally {
+      setSaving(false);
     }
-    if (materialFile) {
-      const r = await base44.integrations.Core.UploadFile({ file: materialFile });
-      file_url = r.file_url;
-    }
-    await base44.entities.MarketItem.create({
-      ...form, price: Number(form.price), image_url, file_url,
-      seller_email: user.email, seller_name: user.full_name,
-      seller_avatar: user.avatar_url || '', status: 'available', views: 0,
-    });
-    setSaving(false);
-    setForm({ title: '', description: '', price: '', category: 'textbook', condition: 'good', subject: '', grade_level: '', is_digital: false });
-    setImageFile(null); setImagePreview(null); setMaterialFile(null);
-    onCreated?.();
-    onClose();
   };
 
   const cfg = CAT_CONFIG[form.category];
