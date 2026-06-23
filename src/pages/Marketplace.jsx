@@ -33,6 +33,22 @@ export default function Marketplace() {
   const [sortBy, setSortBy] = useState('-created_date');
   const [selectedItem, setSelectedItem] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  useEffect(() => {
+    if (!user?.email) return;
+    base44.entities.Order.filter({ seller_email: user.email, status: 'paid' })
+      .then(orders => setPendingOrdersCount(orders.length)).catch(() => {});
+    const unsub = base44.entities.Order.subscribe((event) => {
+      if (!event.data) return;
+      const o = event.data;
+      if (o.seller_email !== user.email) return;
+      // Recount pending on any change
+      base44.entities.Order.filter({ seller_email: user.email, status: 'paid' })
+        .then(orders => setPendingOrdersCount(orders.length)).catch(() => {});
+    });
+    return unsub;
+  }, [user?.email]);
 
   const load = () => {
     setLoading(true);
@@ -106,7 +122,7 @@ export default function Marketplace() {
           <TabsList className="w-max min-w-full">
             <TabsTrigger value="browse" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><ShoppingBag className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Browse</TabsTrigger>
             <TabsTrigger value="my-listings" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><Package className="w-3.5 h-3.5 sm:w-4 sm:h-4" />My Items</TabsTrigger>
-            <TabsTrigger value="orders" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Orders</TabsTrigger>
+            <TabsTrigger value="orders" className="gap-1 sm:gap-1.5 text-xs sm:text-sm relative"><ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Orders{pendingOrdersCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">{pendingOrdersCount}</span>}</TabsTrigger>
             <TabsTrigger value="analytics" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Analytics</TabsTrigger>
             <TabsTrigger value="wallet" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />Wallet</TabsTrigger>
             <TabsTrigger value="finances" className="gap-1 sm:gap-1.5 text-xs sm:text-sm"><BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />My Finances</TabsTrigger>

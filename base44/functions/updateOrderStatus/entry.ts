@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
               available_earnings: newAvailable,
             }),
             base44.asServiceRole.entities.EarningsEscrow.update(escrow.id, {
-              status: 'released', released_at: now, release_trigger: 'buyer_confirmed',
+              status: 'released', released_at: now, release_trigger: 'admin_override',
             }),
             base44.asServiceRole.entities.Order.update(order.id, {
               status: 'completed', escrow_released: true, buyer_confirmed_at: now, file_url: fileUrl,

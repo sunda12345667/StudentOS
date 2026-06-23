@@ -184,6 +184,7 @@ export default function OrderManagement({ user }) {
   const [buying, setBuying] = useState([]);
   const [selling, setSelling] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [defaultTab, setDefaultTab] = useState('buying');
 
   const loadOrders = useCallback(async () => {
     if (!user?.email) return;
@@ -194,6 +195,8 @@ export default function OrderManagement({ user }) {
     setBuying(b);
     setSelling(s);
     setLoading(false);
+    // Auto-switch to selling tab if there are pending orders needing action
+    if (s.some(o => o.status === 'paid')) setDefaultTab('selling');
   }, [user?.email]);
 
   useEffect(() => {
@@ -229,7 +232,7 @@ export default function OrderManagement({ user }) {
   const handleAction = async (order, action, extra = {}) => {
     // Optimistic UI update first
     const optimisticStatus = {
-      approve: 'processing',
+      approve: order.item_type === 'digital' ? 'completed' : 'processing',
       mark_shipped: 'shipped',
       mark_delivered: 'delivered',
       confirm_received: 'completed',
@@ -283,9 +286,10 @@ export default function OrderManagement({ user }) {
   }
 
   const digitalPurchases = buying.filter(o => o.item_type === 'digital' && o.status === 'completed');
+  const pendingSelling = selling.filter(o => o.status === 'paid').length;
 
   return (
-    <Tabs defaultValue="buying">
+    <Tabs defaultValue={defaultTab}>
       <TabsList className="mb-4 flex">
         <TabsTrigger value="buying" className="gap-1.5 flex-1">
           <ShoppingBag className="w-4 h-4" />Orders ({buying.length})
@@ -293,8 +297,13 @@ export default function OrderManagement({ user }) {
         <TabsTrigger value="library" className="gap-1.5 flex-1">
           <BookOpen className="w-4 h-4" />Library ({digitalPurchases.length})
         </TabsTrigger>
-        <TabsTrigger value="selling" className="gap-1.5 flex-1">
+        <TabsTrigger value="selling" className="gap-1.5 flex-1 relative">
           <Package className="w-4 h-4" />Selling ({selling.length})
+          {pendingSelling > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+              {pendingSelling}
+            </span>
+          )}
         </TabsTrigger>
       </TabsList>
 
