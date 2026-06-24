@@ -15,17 +15,16 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 const TX_CONFIG = {
-  deposit:        { label: 'Deposit',        icon: ArrowDownLeft,  color: 'text-emerald-600', bg: 'bg-emerald-50',  sign: '+' },
-  purchase:       { label: 'Purchase',       icon: ArrowUpRight,   color: 'text-red-500',     bg: 'bg-red-50',      sign: '-' },
-  sale:           { label: 'Sale',           icon: ShieldCheck,    color: 'text-amber-600',   bg: 'bg-amber-50',    sign: '+' },
-  escrow_release: { label: 'Earnings Released', icon: Unlock,      color: 'text-emerald-600', bg: 'bg-emerald-50',  sign: '+' },
-  withdrawal:     { label: 'Withdrawal',     icon: ArrowUpRight,   color: 'text-violet-600',  bg: 'bg-violet-50',   sign: '-' },
-  refund:         { label: 'Refund',         icon: RefreshCw,      color: 'text-blue-600',    bg: 'bg-blue-50',     sign: '+' },
-  escrow_hold:    { label: 'Escrow Hold',    icon: Lock,           color: 'text-amber-600',   bg: 'bg-amber-50',    sign: '-' },
-  commission:     { label: 'Commission',     icon: Minus,          color: 'text-orange-500',  bg: 'bg-orange-50',   sign: '-' },
-  // legacy keys
-  fund:           { label: 'Funded',         icon: ArrowDownLeft,  color: 'text-emerald-600', bg: 'bg-emerald-50',  sign: '+' },
-  payment:        { label: 'Payment',        icon: ArrowUpRight,   color: 'text-red-500',     bg: 'bg-red-50',      sign: '-' },
+  deposit:        { label: 'Deposit',           icon: ArrowDownLeft, color: 'text-emerald-600', bg: 'bg-emerald-50',  sign: '+' },
+  purchase:       { label: 'Purchase',          icon: ArrowUpRight,  color: 'text-red-500',     bg: 'bg-red-50',      sign: '-' },
+  sale:           { label: 'Sale',              icon: ShieldCheck,   color: 'text-amber-600',   bg: 'bg-amber-50',    sign: '+' },
+  escrow_release: { label: 'Earnings Released', icon: Unlock,        color: 'text-emerald-600', bg: 'bg-emerald-50',  sign: '+' },
+  withdrawal:     { label: 'Withdrawal',        icon: ArrowUpRight,  color: 'text-violet-600',  bg: 'bg-violet-50',   sign: '-' },
+  refund:         { label: 'Refund',            icon: RefreshCw,     color: 'text-blue-600',    bg: 'bg-blue-50',     sign: '+' },
+  escrow_hold:    { label: 'Escrow Hold',       icon: Lock,          color: 'text-amber-600',   bg: 'bg-amber-50',    sign: '-' },
+  commission:     { label: 'Commission',        icon: Minus,         color: 'text-orange-500',  bg: 'bg-orange-50',   sign: '-' },
+  fund:           { label: 'Funded',            icon: ArrowDownLeft, color: 'text-emerald-600', bg: 'bg-emerald-50',  sign: '+' },
+  payment:        { label: 'Payment',           icon: ArrowUpRight,  color: 'text-red-500',     bg: 'bg-red-50',      sign: '-' },
 };
 
 const FUND_AMOUNTS = [500, 1000, 2000, 5000, 10000];
@@ -130,7 +129,7 @@ function FundModal({ open, onClose, user }) {
   );
 }
 
-function WithdrawModal({ open, onClose, wallet, onSuccess }) {
+function WithdrawModal({ open, onClose, wallet, minWithdrawal, onSuccess }) {
   const [amount, setAmount] = useState('');
   const [selectedBank, setSelectedBank] = useState(null);
   const [account, setAccount] = useState('');
@@ -166,7 +165,7 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
 
   const withdraw = async () => {
     const amt = Number(amount);
-    if (!amt || amt < 5000) { toast.error('Minimum withdrawal is ₦5,000'); return; }
+    if (!amt || amt < minWithdrawal) { toast.error(`Minimum withdrawal is ₦${minWithdrawal.toLocaleString()}`); return; }
     if (amt > available) { toast.error('Amount exceeds available earnings'); return; }
     if (!accountName) { toast.error('Please verify your account number first'); return; }
     setLoading(true);
@@ -186,7 +185,7 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
     }
   };
 
-  const canSubmit = accountName && Number(amount) >= 5000 && Number(amount) <= available && !verifying;
+  const canSubmit = accountName && Number(amount) >= minWithdrawal && Number(amount) <= available && !verifying;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -230,8 +229,10 @@ function WithdrawModal({ open, onClose, wallet, onSuccess }) {
             )}
           </div>
           <div>
-            <label className="text-xs font-medium mb-1 block">Amount (₦) * <span className="text-muted-foreground font-normal">min ₦5,000</span></label>
-            <Input type="number" placeholder="e.g. 10000" value={amount} onChange={e => setAmount(e.target.value)} min={5000} max={available} />
+            <label className="text-xs font-medium mb-1 block">
+              Amount (₦) * <span className="text-muted-foreground font-normal">min ₦{minWithdrawal.toLocaleString()}</span>
+            </label>
+            <Input type="number" placeholder={`e.g. ${minWithdrawal}`} value={amount} onChange={e => setAmount(e.target.value)} min={minWithdrawal} max={available} />
             {Number(amount) > available && <p className="text-xs text-red-500 mt-1">Exceeds available earnings</p>}
           </div>
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
@@ -279,6 +280,7 @@ export default function WalletDashboard({ user }) {
   const [transactions, setTransactions] = useState([]);
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [minWithdrawal, setMinWithdrawal] = useState(5000);
   const [fundOpen, setFundOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [paymentBanner, setPaymentBanner] = useState(null);
@@ -287,14 +289,18 @@ export default function WalletDashboard({ user }) {
   const load = useCallback(async () => {
     if (!user?.email) return;
     setLoading(true);
-    const [w, txs, wrs] = await Promise.all([
+    const [w, txs, wrs, cfgList] = await Promise.all([
       getOrCreateWallet(user.email, user.full_name),
       base44.entities.Transaction.filter({ user_email: user.email }, '-created_date', 60),
       base44.entities.WithdrawalRequest.filter({ user_email: user.email }, '-created_date', 20),
+      base44.entities.CommissionConfig.list().catch(() => []),
     ]);
     setWallet(w);
     setTransactions(txs);
     setWithdrawalRequests(wrs);
+    if (cfgList.length && cfgList[0].min_withdrawal_amount != null) {
+      setMinWithdrawal(cfgList[0].min_withdrawal_amount);
+    }
     setLoading(false);
   }, [user?.email]);
 
@@ -311,7 +317,6 @@ export default function WalletDashboard({ user }) {
       if (e.data?.user_email !== user.email) return;
       if (e.type === 'create') {
         setTransactions(prev => {
-          // Avoid duplicates from race between subscription and initial load
           if (prev.some(t => t.id === e.data.id)) return prev;
           return [e.data, ...prev];
         });
@@ -326,7 +331,11 @@ export default function WalletDashboard({ user }) {
         if (e.data?.status === 'approved' || e.data?.status === 'paid') load();
       }
     });
-    return () => { unsubW(); unsubT(); unsubWR(); };
+    // React to admin changing the min withdrawal amount in real-time
+    const unsubCfg = base44.entities.CommissionConfig.subscribe((e) => {
+      if (e.data?.min_withdrawal_amount != null) setMinWithdrawal(e.data.min_withdrawal_amount);
+    });
+    return () => { unsubW(); unsubT(); unsubWR(); unsubCfg(); };
   }, [user?.email, load]);
 
   // Handle Paystack redirect-back after funding
@@ -336,7 +345,6 @@ export default function WalletDashboard({ user }) {
     const walletStatus = params.get('wallet');
     const paystackRef = params.get('reference') || params.get('trxref');
 
-    // Clean URL immediately
     const newParams = new URLSearchParams(window.location.search);
     ['wallet', 'reference', 'trxref'].forEach(k => newParams.delete(k));
     window.history.replaceState({}, '', `${window.location.pathname}${newParams.toString() ? '?' + newParams.toString() : ''}`);
@@ -367,7 +375,6 @@ export default function WalletDashboard({ user }) {
             return;
           }
         }
-        // Fallback: just reload and show success
         await load();
         setPaymentBanner('success');
         toast.success('Wallet funded!');
@@ -467,9 +474,9 @@ export default function WalletDashboard({ user }) {
             <p className="text-3xl font-black text-emerald-600">₦{availableEarnings.toLocaleString()}</p>
             <p className="text-muted-foreground text-[10px] mt-1">Ready to withdraw to bank</p>
             <Button onClick={() => setWithdrawOpen(true)} size="sm"
-              disabled={availableEarnings < 5000 || wallet?.is_frozen}
+              disabled={availableEarnings < minWithdrawal || wallet?.is_frozen}
               className="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-1.5 border-0 text-xs disabled:opacity-50">
-              <Minus className="w-3.5 h-3.5" />{availableEarnings < 5000 ? 'Min ₦5,000' : 'Withdraw'}
+              <Minus className="w-3.5 h-3.5" />{availableEarnings < minWithdrawal ? `Min ₦${minWithdrawal.toLocaleString()}` : 'Withdraw'}
             </Button>
           </CardContent>
         </Card>
@@ -549,7 +556,7 @@ export default function WalletDashboard({ user }) {
       </Card>
 
       <FundModal open={fundOpen} onClose={() => setFundOpen(false)} user={user} />
-      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} wallet={wallet} onSuccess={() => load()} />
+      <WithdrawModal open={withdrawOpen} onClose={() => setWithdrawOpen(false)} wallet={wallet} minWithdrawal={minWithdrawal} onSuccess={() => load()} />
     </div>
   );
 }
