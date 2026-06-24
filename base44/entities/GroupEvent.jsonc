@@ -61,13 +61,6 @@
     "read": {
       "$or": [
         {
-          "data.group_id": {
-            "$in": [
-              "{{user.data.member_group_ids}}"
-            ]
-          }
-        },
-        {
           "data.rsvp_emails": "{{user.email}}"
         },
         {
@@ -80,10 +73,7 @@
     "update": {
       "$or": [
         {
-          "data.created_by": "{{user.email}}"
-        },
-        {
-          "data.rsvp_emails": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -95,7 +85,7 @@
     "delete": {
       "$or": [
         {
-          "data.created_by": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {

@@ -94,20 +94,6 @@
           "data.privacy": "public"
         },
         {
-          "data.community_id": {
-            "$in": [
-              "{{user.data.member_community_ids}}"
-            ]
-          }
-        },
-        {
-          "data.school_id": {
-            "$in": [
-              "{{user.data.member_school_ids}}"
-            ]
-          }
-        },
-        {
           "data.author_email": "{{user.email}}"
         },
         {

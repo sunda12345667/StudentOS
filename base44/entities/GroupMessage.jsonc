@@ -44,25 +44,14 @@
       "created_by_id": "{{user.id}}"
     },
     "read": {
-      "$or": [
-        {
-          "data.group_id": {
-            "$in": [
-              "{{user.data.member_group_ids}}"
-            ]
-          }
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "update": {
       "$or": [
         {
-          "data.sender_email": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
@@ -74,7 +63,7 @@
     "delete": {
       "$or": [
         {
-          "data.sender_email": "{{user.email}}"
+          "created_by_id": "{{user.id}}"
         },
         {
           "user_condition": {
