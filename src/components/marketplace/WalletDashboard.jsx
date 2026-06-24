@@ -175,7 +175,7 @@ function WithdrawModal({ open, onClose, wallet, minWithdrawal, onSuccess }) {
         account_number: account, account_name: accountName,
       });
       if (res.data?.error) { toast.error(res.data.error); return; }
-      toast.success(res.data?.message || 'Withdrawal request submitted!');
+      toast.success(res.data?.message || 'Withdrawal request submitted successfully!');
       onSuccess();
       handleClose();
     } catch (e) {

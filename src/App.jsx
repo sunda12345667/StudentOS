@@ -44,6 +44,7 @@ import AdminWallet from '@/pages/admin/AdminWallet';
 import AdminAnalytics from '@/pages/admin/AdminAnalytics';
 import AdminNotifications from '@/pages/admin/AdminNotifications';
 import AdminSettings from '@/pages/admin/AdminSettings';
+import AdminWithdrawals from '@/pages/admin/AdminWithdrawals';
 import AdminReports from '@/pages/admin/AdminReports';
 import AdminUsers from '@/pages/admin/AdminUsers';
 import AdminMarketplace from '@/pages/admin/AdminMarketplace';
@@ -121,6 +122,7 @@ const AuthenticatedApp = () => {
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/notifications" element={<AdminNotifications />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
+          <Route path="/admin/withdrawals" element={<AdminWithdrawals />} />
         </Route>
       </Route>
 

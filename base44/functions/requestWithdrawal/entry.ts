@@ -5,8 +5,6 @@
  */
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
-const MIN_WITHDRAWAL = 5000; // ₦5,000 default minimum
-
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -19,6 +17,11 @@ Deno.serve(async (req) => {
     if (!amount || !bank || !account_number || !account_name) {
       return Response.json({ error: 'amount, bank, account_number, and account_name are required' }, { status: 400 });
     }
+
+    // Read min withdrawal from config (fallback to 5000)
+    const cfgList = await base44.asServiceRole.entities.CommissionConfig.list().catch(() => []);
+    const MIN_WITHDRAWAL = (cfgList[0]?.min_withdrawal_amount) || 5000;
+
     if (amount < MIN_WITHDRAWAL) {
       return Response.json({ error: `Minimum withdrawal is ₦${MIN_WITHDRAWAL.toLocaleString()}` }, { status: 400 });
     }
@@ -93,7 +96,12 @@ Deno.serve(async (req) => {
       is_read: false,
     });
 
-    return Response.json({ success: true, reference: ref, withdrawal_id: wr.id, message: 'Withdrawal request submitted. Admin will process it shortly.' });
+    return Response.json({
+      success: true,
+      reference: ref,
+      withdrawal_id: wr.id,
+      message: 'Your withdrawal request has been submitted successfully and is now pending admin approval. You will receive a notification once your request has been reviewed and processed.',
+    });
 
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
