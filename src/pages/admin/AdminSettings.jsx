@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +63,7 @@ export default function AdminSettings() {
   const [sendingMonthly, setSendingMonthly] = useState(false);
 
   // Load existing config on mount
-  useState(() => {
+  useEffect(() => {
     base44.entities.CommissionConfig.list().then(list => {
       if (list.length) {
         const cfg = list[0];
@@ -72,7 +72,7 @@ export default function AdminSettings() {
         if (cfg.is_active != null) setCommissionActive(cfg.is_active);
       }
     }).catch(() => {});
-  });
+  }, []);
 
   const save = async () => {
     setSaving(true);
