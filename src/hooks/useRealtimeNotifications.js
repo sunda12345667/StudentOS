@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { toast } from 'sonner';
-import { ShoppingBag, ShieldCheck, RefreshCw, Package, AlertTriangle } from 'lucide-react';
 
 const ICON_MAP = {
   marketplace: '🛒',
@@ -13,14 +12,45 @@ const ICON_MAP = {
   announcement: '📢',
 };
 
+// Request browser push permission once and return whether it's granted
+async function requestPushPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+// Fire a native browser/OS notification
+function sendBrowserNotification(title, body, icon) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: icon || '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: `studentos-${Date.now()}`,
+      requireInteraction: false,
+    });
+    // Auto-close after 6s
+    setTimeout(() => n.close(), 6000);
+    n.onclick = () => { window.focus(); n.close(); };
+  } catch (_) { /* silently ignore – e.g. service worker not ready */ }
+}
+
 /**
- * Subscribe to real-time Notification entity updates and show toasts for
- * new notifications belonging to the current user.
- * Must be mounted once in AppLayout or a top-level component.
+ * Subscribe to real-time Notification entity updates and show both
+ * an in-app Sonner toast AND a native browser push notification.
+ * Must be mounted once in AppLayout.
  */
 export default function useRealtimeNotifications(userEmail) {
-  // Track IDs we've already toasted so we don't double-fire on re-subscribe
   const seenIds = useRef(new Set());
+  const pushGranted = useRef(false);
+
+  // Request push permission once on mount
+  useEffect(() => {
+    requestPushPermission().then(granted => { pushGranted.current = granted; });
+  }, []);
 
   useEffect(() => {
     if (!userEmail) return;
@@ -34,6 +64,8 @@ export default function useRealtimeNotifications(userEmail) {
       seenIds.current.add(notif.id);
 
       const icon = ICON_MAP[notif.type] || '🔔';
+
+      // 1. In-app Sonner toast (always shown)
       toast(`${icon} ${notif.content}`, {
         duration: 5000,
         action: notif.link ? {
@@ -41,6 +73,21 @@ export default function useRealtimeNotifications(userEmail) {
           onClick: () => { window.location.href = notif.link; },
         } : undefined,
       });
+
+      // 2. Native browser / OS push notification (when tab is hidden or user has granted permission)
+      if (pushGranted.current) {
+        const titleMap = {
+          marketplace: 'StudentOS Marketplace',
+          like: 'Someone liked your post',
+          comment: 'New comment',
+          follow: 'New follower',
+          achievement: 'Achievement unlocked!',
+          grade: 'New grade',
+          announcement: 'Announcement',
+        };
+        const title = titleMap[notif.type] || 'StudentOS';
+        sendBrowserNotification(title, notif.content, '/favicon.ico');
+      }
     });
 
     return unsub;

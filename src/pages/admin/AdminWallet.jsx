@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import {
   DollarSign, Percent, Megaphone, Clock,
   CheckCircle2, XCircle, ArrowDownToLine, Loader2, RefreshCw,
-  Lock, Unlock, TrendingUp, Receipt, Filter
+  Lock, Unlock, TrendingUp, Receipt, Filter, Pencil
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, subDays } from 'date-fns';
@@ -66,6 +66,7 @@ export default function AdminWallet() {
   const [rejectNote, setRejectNote] = useState('');
   const [rejectingId, setRejectingId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [editingAmount, setEditingAmount] = useState({}); // { [id]: newAmount }
 
   const load = async () => {
     setLoading(true);
@@ -304,7 +305,47 @@ export default function AdminWallet() {
                     {w.reference && <p className="text-white/20 text-[10px] font-mono">{w.reference}</p>}
                   </div>
                   <div className="text-right mr-2 flex-shrink-0">
-                    <p className="text-amber-400 font-black text-lg">₦{(w.amount || 0).toLocaleString()}</p>
+                    {editingAmount[w.id] !== undefined ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-amber-400 font-bold text-sm">₦</span>
+                        <Input
+                          type="number"
+                          value={editingAmount[w.id]}
+                          onChange={e => setEditingAmount(prev => ({ ...prev, [w.id]: e.target.value }))}
+                          className="bg-white/5 border-amber-400/40 text-amber-300 text-sm h-8 w-28 font-bold"
+                          autoFocus
+                        />
+                        <button
+                          onClick={async () => {
+                            const newAmt = parseFloat(editingAmount[w.id]);
+                            if (!newAmt || newAmt <= 0) { toast.error('Enter a valid amount'); return; }
+                            try {
+                              await base44.entities.WithdrawalRequest.update(w.id, { amount: newAmt });
+                              setWithdrawalRequests(prev => prev.map(r => r.id === w.id ? { ...r, amount: newAmt } : r));
+                              setEditingAmount(prev => { const n = { ...prev }; delete n[w.id]; return n; });
+                              toast.success(`Amount updated to ₦${newAmt.toLocaleString()}`);
+                            } catch (e) { toast.error(e.message); }
+                          }}
+                          className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEditingAmount(prev => { const n = { ...prev }; delete n[w.id]; return n; })}
+                          className="p-1.5 rounded-lg bg-white/5 text-white/40 hover:bg-white/10">
+                          <XCircle className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 justify-end">
+                        <p className="text-amber-400 font-black text-lg">₦{(w.amount || 0).toLocaleString()}</p>
+                        <button
+                          onClick={() => setEditingAmount(prev => ({ ...prev, [w.id]: w.amount }))}
+                          title="Edit amount"
+                          className="p-1 rounded-md bg-white/5 text-white/30 hover:bg-amber-500/20 hover:text-amber-400 transition-colors">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-md ${STATUS_CFG['pending']?.class}`}>Pending</span>
                   </div>
                   <div className="flex gap-1 flex-shrink-0">
