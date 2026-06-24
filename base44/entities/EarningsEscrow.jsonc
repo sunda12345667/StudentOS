@@ -67,6 +67,10 @@
         "refunded"
       ],
       "description": "What caused the release"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [

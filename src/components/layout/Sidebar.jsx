@@ -93,6 +93,22 @@ export default function Sidebar({ user, collapsed, onToggle }) {
         })}
       </nav>
 
+      {/* About & Contact footer links */}
+      <div className="px-2 pb-1 flex gap-1">
+        <Link to="/about" className="flex-1">
+          <div className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <Sparkles className="w-3.5 h-3.5 flex-shrink-0" />
+            {!collapsed && <span className="text-[11px] font-medium">About</span>}
+          </div>
+        </Link>
+        <Link to="/contact" className="flex-1">
+          <div className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+            <MessageCircle className="w-3.5 h-3.5 flex-shrink-0" />
+            {!collapsed && <span className="text-[11px] font-medium">Contact</span>}
+          </div>
+        </Link>
+      </div>
+
       {/* Admin link for admins */}
       {user?.role === 'admin' && (
         <div className="px-2 pb-1">

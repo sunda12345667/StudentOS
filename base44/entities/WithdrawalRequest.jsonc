@@ -54,6 +54,10 @@
     },
     "paystack_recipient_code": {
       "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [

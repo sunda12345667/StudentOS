@@ -32,6 +32,8 @@ import CampusGroupDetail from '@/pages/CampusGroupDetail';
 import Planner from '@/pages/Planner';
 import Settings from '@/pages/Settings';
 import SavedPosts from '@/pages/SavedPosts';
+import About from '@/pages/About';
+import Contact from '@/pages/Contact';
 
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminOverview from '@/pages/admin/AdminOverview';
@@ -99,6 +101,8 @@ const AuthenticatedApp = () => {
           <Route path="/messages" element={<Messages />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/saved" element={<SavedPosts />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
         </Route>
       </Route>
 
