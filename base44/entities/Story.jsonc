@@ -34,5 +34,51 @@
   "required": [
     "author_email",
     "author_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.author_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.expires_at": {
+            "$gt": "{{.now}}"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.author_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.author_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.author_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

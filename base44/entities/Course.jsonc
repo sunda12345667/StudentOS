@@ -67,5 +67,61 @@
     "title",
     "teacher_email",
     "teacher_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "data.teacher_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": {
+      "$or": [
+        {
+          "data.is_free": true
+        },
+        {
+          "data.enrolled_emails": "{{user.email}}"
+        },
+        {
+          "data.teacher_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.teacher_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.teacher_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

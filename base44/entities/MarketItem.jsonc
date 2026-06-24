@@ -81,5 +81,49 @@
     "seller_email",
     "seller_name",
     "category"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.seller_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.status": "available"
+        },
+        {
+          "data.seller_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.seller_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.seller_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

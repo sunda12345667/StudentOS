@@ -24,5 +24,17 @@
   "required": [
     "user_email",
     "post_id"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.user_email": "{{user.email}}"
+    },
+    "read": {
+      "data.user_email": "{{user.email}}"
+    },
+    "update": {},
+    "delete": {
+      "data.user_email": "{{user.email}}"
+    }
+  }
 }

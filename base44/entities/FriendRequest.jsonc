@@ -35,5 +35,40 @@
     "to_email",
     "from_name",
     "to_name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.from_email": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "data.from_email": "{{user.email}}"
+        },
+        {
+          "data.to_email": "{{user.email}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "data.from_email": "{{user.email}}"
+        },
+        {
+          "data.to_email": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.from_email": "{{user.email}}"
+        },
+        {
+          "data.to_email": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }
