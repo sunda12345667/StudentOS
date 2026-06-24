@@ -49,6 +49,7 @@ const Toggle = ({ value, onChange }) => (
 
 export default function AdminSettings() {
   const [commission, setCommission] = useState('10');
+  const [minWithdrawal, setMinWithdrawal] = useState('5000');
   const [feedAdPrice, setFeedAdPrice] = useState('50000');
   const [sidebarAdPrice, setSidebarAdPrice] = useState('30000');
   const [videoAdPrice, setVideoAdPrice] = useState('80000');
@@ -61,19 +62,35 @@ export default function AdminSettings() {
   const [sendingWeekly, setSendingWeekly] = useState(false);
   const [sendingMonthly, setSendingMonthly] = useState(false);
 
+  // Load existing config on mount
+  useState(() => {
+    base44.entities.CommissionConfig.list().then(list => {
+      if (list.length) {
+        const cfg = list[0];
+        if (cfg.rate != null) setCommission(String(cfg.rate));
+        if (cfg.min_withdrawal_amount != null) setMinWithdrawal(String(cfg.min_withdrawal_amount));
+        if (cfg.is_active != null) setCommissionActive(cfg.is_active);
+      }
+    }).catch(() => {});
+  });
+
   const save = async () => {
     setSaving(true);
-    await new Promise(r => setTimeout(r, 800));
-    // Save commission config
-    const list = await base44.entities.CommissionConfig.list().catch(() => []);
-    const rate = Number(commission);
-    if (list.length) {
-      await base44.entities.CommissionConfig.update(list[0].id, { rate, is_active: commissionActive }).catch(() => {});
-    } else {
-      await base44.entities.CommissionConfig.create({ rate, is_active: commissionActive }).catch(() => {});
+    try {
+      const list = await base44.entities.CommissionConfig.list().catch(() => []);
+      const rate = Number(commission);
+      const min_withdrawal_amount = Number(minWithdrawal) || 5000;
+      if (list.length) {
+        await base44.entities.CommissionConfig.update(list[0].id, { rate, is_active: commissionActive, min_withdrawal_amount });
+      } else {
+        await base44.entities.CommissionConfig.create({ rate, is_active: commissionActive, min_withdrawal_amount });
+      }
+      toast.success('Settings saved successfully!');
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    toast.success('Settings saved successfully!');
   };
 
   const sendReport = async (type) => {
@@ -108,10 +125,16 @@ export default function AdminSettings() {
         <Field label="Commission Active" hint="Toggle to pause all commission collection">
           <Toggle value={commissionActive} onChange={setCommissionActive} />
         </Field>
-        <Field label="Minimum Order Amount" hint="Orders below this amount are commission-free">
+        <Field label="Minimum Withdrawal Amount" hint="Users cannot withdraw below this amount">
           <div className="flex items-center gap-2">
             <span className="text-white/40 text-sm">₦</span>
-            <Input type="number" defaultValue="0" className="w-24 bg-white/5 border-white/10 text-white" />
+            <Input
+              type="number"
+              value={minWithdrawal}
+              onChange={e => setMinWithdrawal(e.target.value)}
+              className="w-28 bg-white/5 border-white/10 text-white font-bold"
+              min="100"
+            />
           </div>
         </Field>
       </Section>
